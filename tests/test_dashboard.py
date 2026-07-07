@@ -276,3 +276,21 @@ def test_price_level_and_metric_extraction():
 
     # 숫자가 없으면 지어내지 않고 비운다
     assert extract_price_levels("관망을 권고합니다") == {}
+
+
+def test_price_extraction_rejects_scalar_false_positives():
+    from tradingagents.dashboard.events import extract_price_levels
+
+    # 실사고 재현: "분할 3회 진입"의 3이 진입가로 잡혀 사다리가 무너졌다
+    text = "진입은 분할 3회로 나누며, Entry Price: 286000.0, Price Target: 350000.0"
+    levels = extract_price_levels(text)
+    assert levels.get("entry") == 286000.0
+    assert levels.get("target") == 350000.0
+
+    # 자릿수대가 안 맞는 오검출은 통째로 버린다
+    text2 = "진입 3, 목표주가 350,000원"
+    levels2 = extract_price_levels(text2)
+    assert "entry" not in levels2 and levels2.get("target") == 350000.0
+
+    # PER 배수·비중 %는 가격이 아니다
+    assert extract_price_levels("목표 PER 4.65배 수준") == {}

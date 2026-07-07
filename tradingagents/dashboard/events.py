@@ -70,11 +70,14 @@ _RISK_SPEAKERS = (
 )
 
 
+# 가격으로 인정할 숫자만: 콤마 천단위(286,000) / 통화기호 / 소수 포함 2자리 이상(191.5)
+# / 4자리 이상 정수. "분할 3회", "PER 4.65배", "비중 6%" 등의 스칼라는 뒤따르는
+# 단위(회/배/%/라운드/개)를 네거티브 룩어헤드로 거른다.
+_PRICE = r"([\$₩]?(?:\d{1,3}(?:,\d{3})+|\d{4,}|\d{2,3}\.\d+)(?:\.\d+)?)(?!\s*(?:회|배|%|라운드|개))"
 _LEVEL_PATTERNS = {
-    # 진입/손절/목표 — 한국어·영어 라벨 뒤의 첫 숫자를 잡는다 (163,000 / 185.5 / $191 형태)
-    "entry": r"(?:진입(?:가|선|\s*가격)?|매수\s*(?:가|존|구간)|entry)\D{0,12}([\$₩]?[\d,]+(?:\.\d+)?)",
-    "stop": r"(?:손절(?:가|선|\s*기준)?|stop[\s-]?loss)\D{0,12}([\$₩]?[\d,]+(?:\.\d+)?)",
-    "target": r"(?:목표(?:가|주가)?|target)\D{0,12}([\$₩]?[\d,]+(?:\.\d+)?)",
+    "entry": r"(?:진입(?:가|선|\s*가격)?|매수\s*(?:가|존|구간)|entry(?:\s*price)?)\D{0,12}" + _PRICE,
+    "stop": r"(?:손절(?:가|선|\s*기준)?|stop[\s-]?loss)\D{0,12}" + _PRICE,
+    "target": r"(?:목표(?:가|주가)?|(?:price\s*)?target)\D{0,12}" + _PRICE,
 }
 
 _METRIC_PATTERNS = (
@@ -106,6 +109,12 @@ def extract_price_levels(text: str) -> dict[str, float]:
             value = _to_number(m.group(1))
             if value is not None and value > 0:
                 levels[key] = value
+    # 상호 정합성: 진입/손절/목표는 같은 자릿수대여야 한다. 최댓값 대비
+    # 1/20 미만인 값은 오검출(예: "분할 3회"의 3)로 보고 버린다 —
+    # 틀린 숫자를 그리는 것보다 안 그리는 편이 낫다.
+    if len(levels) >= 2:
+        peak = max(levels.values())
+        levels = {k: v for k, v in levels.items() if v >= peak / 20}
     return levels
 
 

@@ -128,6 +128,21 @@ aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);ma
 .md th,.md td{border:1px solid var(--line);padding:6px 10px;text-align:left}
 .md th{background:var(--panel2);color:var(--text);font-family:var(--mono);font-size:11px}
 .md td{color:var(--dim)} .md hr{border:none;border-top:1px solid var(--line);margin:16px 0}
+
+.stepper{display:flex;gap:8px;margin-bottom:22px}
+.step{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;transition:border-color .3s}
+.step .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--faint);flex:none}
+.step .lbl{font-size:11.5px;font-weight:700}
+.step .sub{font-size:10px;color:var(--faint);font-family:var(--mono)}
+.step.on{border-color:var(--amber)} .step.on .dot{border-color:var(--amber);color:var(--amber)}
+.step.done .dot{background:var(--amber);border-color:var(--amber);color:#14100A}
+.stage-desc{font-size:11.5px;color:var(--faint);margin:-6px 0 12px;word-break:keep-all}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:16px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;text-align:center}
+.stat .k{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;color:var(--faint)}
+.stat .v{font-family:var(--mono);font-size:16px;font-weight:600;margin-top:4px}
+.stat .v.up{color:var(--up)} .stat .v.down{color:var(--down)} .stat .v.amber{color:var(--amber)}
+@media(max-width:700px){.stepper{flex-wrap:wrap}.step{min-width:45%}}
 </style>
 </head>
 <body>
@@ -145,8 +160,15 @@ aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);ma
 
 <div class="wrap">
 <main>
+  <div class="stepper" id="stepper">
+    <div class="step" data-step="1"><span class="dot">1</span><div><div class="lbl">데이터 분석</div><div class="sub" id="st1sub">대기</div></div></div>
+    <div class="step" data-step="2"><span class="dot">2</span><div><div class="lbl">강세·약세 토론</div><div class="sub" id="st2sub">대기</div></div></div>
+    <div class="step" data-step="3"><span class="dot">3</span><div><div class="lbl">리스크 심의</div><div class="sub" id="st3sub">대기</div></div></div>
+    <div class="step" data-step="4"><span class="dot">4</span><div><div class="lbl">최종 결정</div><div class="sub" id="st4sub">대기</div></div></div>
+  </div>
   <section class="stage" id="s-analysts">
     <div class="stage-h"><span class="no">STAGE 1</span><h2>애널리스트팀 (병렬)</h2><span class="st">대기</span></div>
+    <p class="stage-desc">네 명의 애널리스트가 동시에 데이터를 수집·분석합니다. 카드가 노랗게 빛나는 동안 작업 중이며, 보통 1~2분 걸립니다. 완료된 카드는 클릭하면 보고서 전문을 볼 수 있습니다.</p>
     <div class="cards">
       <div class="card" data-agent="market"><span class="badge">대기</span>
         <div class="who"><div class="avatar">📈</div><div><div class="nm">마켓</div><div class="rl">기술적 분석</div></div></div>
@@ -166,6 +188,7 @@ aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);ma
 
   <section class="stage" id="s-debate">
     <div class="stage-h"><span class="no">STAGE 2</span><h2>리서치팀 토론</h2><span class="st">대기</span></div>
+    <p class="stage-desc">강세(BULL)와 약세(BEAR) 리서처가 보고서를 근거로 공방을 벌이고, 리서치 매니저가 판정합니다. 막대는 발언 비율입니다.</p>
     <div class="arena" id="arena">
       <div class="duel"><span class="bull">▲ BULL <span id="bullN" style="opacity:.7"></span></span><span class="bear"><span id="bearN" style="opacity:.7"></span> BEAR ▼</span></div>
       <div class="balance" aria-hidden="true"><i id="balBull" style="width:50%"></i><u id="balBear" style="width:50%"></u></div>
@@ -176,6 +199,7 @@ aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);ma
 
   <section class="stage" id="s-risk">
     <div class="stage-h"><span class="no">STAGE 3</span><h2>트레이더 & 리스크 위원회</h2><span class="st">대기</span></div>
+    <p class="stage-desc">트레이더가 실행 계획(진입·손절·비중)을 만들면, 성향이 다른 세 위원이 검증합니다. 카드에는 각자의 핵심 발언 요약이 표시됩니다.</p>
     <div class="cards">
       <div class="card" data-agent="trader"><span class="badge">대기</span>
         <div class="who"><div class="avatar">🎯</div><div><div class="nm">트레이더</div><div class="rl">실행 계획</div></div></div>
@@ -195,9 +219,11 @@ aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);ma
 
   <section class="stage" id="s-final">
     <div class="stage-h"><span class="no">STAGE 4</span><h2>포트폴리오 매니저 — 최종 결정</h2><span class="st">대기</span></div>
+    <p class="stage-desc">모든 논의를 종합한 최종 등급입니다. 아래 수치는 보고서 본문에서 자동 추출한 값으로, 본문에 명시되지 않은 항목은 표시하지 않습니다.</p>
     <div class="verdict">
       <div class="stamp" id="stamp">···</div>
       <div style="flex:1;min-width:260px">
+        <div class="stats" id="stats" style="display:none"></div>
         <div class="gauge" id="gauge" aria-label="5등급 게이지"><span></span><span></span><span></span><span></span><span></span></div>
         <div class="gauge-labels"><span>S.SELL</span><span>SELL</span><span>HOLD</span><span>BUY</span><span>S.BUY</span></div>
         <div class="ladder" id="ladder" style="display:none"><div class="axis"></div></div>
@@ -333,6 +359,23 @@ function drawBalance(){
   $('#balBear').style.width=(bearN/total*100)+'%';
   $('#bullN').textContent=bullN?`${bullN}`:''; $('#bearN').textContent=bearN?`${bearN}`:'';
 }
+function setStep(n, state, sub){
+  const el=document.querySelector(`.step[data-step="${n}"]`); if(!el) return;
+  el.classList.remove('on','done'); if(state) el.classList.add(state);
+  if(sub!==undefined) el.querySelector('.sub').textContent=sub;
+}
+function drawStats(ev){
+  const box=$('#stats'); const t=[];
+  const fmt=v=>Number(v).toLocaleString();
+  t.push({k:'RATING', v:ev.rating, cls:ev.bias==='bullish'?'up':(ev.bias==='bearish'?'down':'')});
+  t.push({k:'ACTION', v:ev.action, cls:'amber'});
+  const L=ev.levels||{};
+  if(L.entry!==undefined) t.push({k:'진입', v:fmt(L.entry), cls:'amber'});
+  if(L.stop!==undefined) t.push({k:'손절', v:fmt(L.stop), cls:'down'});
+  if(L.target!==undefined) t.push({k:'목표', v:fmt(L.target), cls:'up'});
+  box.innerHTML=t.map(x=>`<div class="stat"><div class="k">${x.k}</div><div class="v ${x.cls||''}">${x.v}</div></div>`).join('');
+  box.style.display='grid';
+}
 function drawTelemetry(analysts){
   const box=$('#tbars'); box.style.display='block';
   const entries=Object.entries(analysts); if(!entries.length) return;
@@ -358,6 +401,8 @@ function reset(){
   $('#ladder').style.display='none';$('#tbars').style.display='none';
   Object.keys(fullReports).forEach(k=>delete fullReports[k]);
   document.querySelectorAll('.chips,.expand').forEach(n=>n.remove());
+  [1,2,3,4].forEach(n=>setStep(n,null,'대기'));
+  $('#stats').style.display='none';
 }
 
 function handle(ev){
@@ -368,6 +413,7 @@ function handle(ev){
         log(`${ev.ticker} · ${ev.date} 파이프라인 시작`,'ok');
         stage('#s-analysts','진행 중','on');
         ['market','sentiment','news','fundamentals'].forEach(a=>cardState(a,'active','분석 중'));
+        setStep(1,'on','분석 중 · 1~2분');setStep(2,null,'대기');setStep(3,null,'대기');setStep(4,null,'대기');
       } else if(ev.stage==='done'){
         log(`완료 — 최종 시그널: ${ev.decision||''}`,'ok');
         stopStream();
@@ -378,7 +424,9 @@ function handle(ev){
       fullReports[ev.agent]=ev.content; markExpandable(ev.agent); chips(ev.agent, ev.metrics);
       repCount++; $('#mRep').textContent=`${repCount}/4`;
       log(`${ev.agent} 보고서 수신 (${ev.content.length.toLocaleString()}자)`);
-      if(repCount>=4){stage('#s-analysts','완료','done'); stage('#s-debate','진행 중','on'); $('#arena').classList.add('active');}
+      setStep(1,'on',`보고서 ${repCount}/4`);
+      if(repCount>=4){stage('#s-analysts','완료','done'); stage('#s-debate','진행 중','on'); $('#arena').classList.add('active');
+        setStep(1,'done','완료');setStep(2,'on','토론 중');}
       break;
     case 'telemetry': {
       drawTelemetry(ev.analysts);
@@ -391,6 +439,7 @@ function handle(ev){
       if(ev.speaker==='judge'){
         stage('#s-debate','완료','done'); $('#arena').classList.remove('active');
         stage('#s-risk','진행 중','on'); cardState('trader','active','작성 중');
+        setStep(2,'done','판정 완료');setStep(3,'on','심의 중');
       }
       log(`토론: ${ev.speaker} 발언`);
       break;
@@ -401,7 +450,7 @@ function handle(ev){
       log('트레이더 실행 계획 수신');
       break;
     case 'risk':
-      cardState(ev.speaker,'done','발언 완료'); cardOut(ev.speaker, ev.content);
+      cardState(ev.speaker,'done','발언 완료'); cardOut(ev.speaker, ev.summary || ev.content);
       fullReports[ev.speaker]=(fullReports[ev.speaker]||'')+'\n\n'+ev.content; markExpandable(ev.speaker);
       log(`리스크: ${ev.speaker} 발언`);
       break;
@@ -409,7 +458,8 @@ function handle(ev){
       stage('#s-risk','완료','done'); RISK_AGENTS.forEach(a=>{const c=card(a); if(!c.classList.contains('done')) cardState(a,'done','완료');});
       stage('#s-final','완료','done');
       const st=$('#stamp'); st.textContent=ev.rating; st.className='stamp '+ev.bias;
-      drawGauge(ev.score); if(ev.levels) drawLadder(ev.levels);
+      drawGauge(ev.score); if(ev.levels) drawLadder(ev.levels); drawStats(ev);
+      setStep(3,'done','심의 완료');setStep(4,'done',ev.rating);
       fullReports['final']=ev.content;
       $('#why').innerHTML=mdToHtml(ev.summary||ev.content)+'<p style="margin-top:8px"><a href="#" id="finalFull" style="color:var(--amber)">전문 보기 ⤢</a></p>';
       document.getElementById('finalFull').addEventListener('click',e=>{e.preventDefault();openModal(AGENT_LABEL.final, fullReports['final']);});

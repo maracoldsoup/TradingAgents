@@ -258,3 +258,21 @@ def test_us_social_sources_skip_korean_listings(caplog):
         socket.socket.connect = orig
     assert "KRX" in st and "unavailable" in st
     assert "KRX" in rd and "unavailable" in rd
+
+
+def test_price_level_and_metric_extraction():
+    from tradingagents.dashboard.events import extract_metrics, extract_price_levels
+
+    text = (
+        "진입가 191,000원에서 분할 매수, 손절선은 185,000원, 목표주가 209,000원. "
+        "RSI 58, Forward PER 4.99배, PEG 0.23, ATR 25,301. 비중은 최대 6%."
+    )
+    levels = extract_price_levels(text)
+    assert levels == {"entry": 191000.0, "stop": 185000.0, "target": 209000.0}
+
+    chips = {c["label"]: c["value"] for c in extract_metrics(text)}
+    assert chips["RSI"] == 58 and chips["PER"] == 4.99
+    assert chips["PEG"] == 0.23 and chips["비중"] == 6
+
+    # 숫자가 없으면 지어내지 않고 비운다
+    assert extract_price_levels("관망을 권고합니다") == {}

@@ -70,6 +70,57 @@ _RISK_SPEAKERS = (
 )
 
 
+_LEVEL_PATTERNS = {
+    # 진입/손절/목표 — 한국어·영어 라벨 뒤의 첫 숫자를 잡는다 (163,000 / 185.5 / $191 형태)
+    "entry": r"(?:진입(?:가|선|\s*가격)?|매수\s*(?:가|존|구간)|entry)\D{0,12}([\$₩]?[\d,]+(?:\.\d+)?)",
+    "stop": r"(?:손절(?:가|선|\s*기준)?|stop[\s-]?loss)\D{0,12}([\$₩]?[\d,]+(?:\.\d+)?)",
+    "target": r"(?:목표(?:가|주가)?|target)\D{0,12}([\$₩]?[\d,]+(?:\.\d+)?)",
+}
+
+_METRIC_PATTERNS = (
+    ("RSI", r"RSI\D{0,8}(\d{1,2}(?:\.\d+)?)"),
+    ("PER", r"(?:Forward\s+)?PER\D{0,8}(\d{1,3}(?:\.\d+)?)"),
+    ("PEG", r"PEG\D{0,8}(\d{1,2}(?:\.\d+)?)"),
+    ("ATR", r"ATR\D{0,8}([\d,]+(?:\.\d+)?)"),
+    ("비중", r"비중\D{0,10}(\d{1,2}(?:\.\d+)?)\s*%"),
+)
+
+
+def _to_number(raw: str) -> float | None:
+    try:
+        return float(raw.replace(",", "").lstrip("$₩"))
+    except ValueError:
+        return None
+
+
+def extract_price_levels(text: str) -> dict[str, float]:
+    """Pull entry/stop/target price levels out of a decision text.
+
+    Deterministic regex extraction (no LLM): the dashboard's level ladder
+    must never invent numbers, so anything ambiguous is simply omitted.
+    """
+    levels: dict[str, float] = {}
+    for key, pattern in _LEVEL_PATTERNS.items():
+        m = re.search(pattern, text, re.IGNORECASE)
+        if m:
+            value = _to_number(m.group(1))
+            if value is not None and value > 0:
+                levels[key] = value
+    return levels
+
+
+def extract_metrics(text: str) -> list[dict[str, Any]]:
+    """Pull a small curated set of labeled indicator values for KPI chips."""
+    chips: list[dict[str, Any]] = []
+    for label, pattern in _METRIC_PATTERNS:
+        m = re.search(pattern, text, re.IGNORECASE)
+        if m:
+            value = _to_number(m.group(1))
+            if value is not None:
+                chips.append({"label": label, "value": value})
+    return chips
+
+
 class DashboardEventTranslator:
     """Diffs successive state chunks into incremental dashboard events."""
 
@@ -95,6 +146,7 @@ class DashboardEventTranslator:
                         "type": "report",
                         "agent": agent,
                         "content": content,
+                        "metrics": extract_metrics(content),
                         **summarize_content(content),
                     }
                 )
@@ -121,7 +173,12 @@ class DashboardEventTranslator:
         trader = (chunk.get("trader_investment_plan") or "").strip()
         if trader and not self._trader_sent:
             self._trader_sent = True
-            events.append({"type": "trader", "content": trader, **summarize_content(trader)})
+            events.append({
+                "type": "trader",
+                "content": trader,
+                "levels": extract_price_levels(trader),
+                **summarize_content(trader),
+            })
 
         # ── Stage 4: risk committee ──
         risk = chunk.get("risk_debate_state") or {}
@@ -144,6 +201,7 @@ class DashboardEventTranslator:
                     "action": rating_to_action(rating),
                     "bias": rating_to_bias(rating),
                     "score": rating_to_score(rating),
+                    "levels": extract_price_levels(final),
                 }
             )
 

@@ -87,6 +87,47 @@ aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);ma
 .log .err{color:var(--up)}
 .meter{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:flex;gap:18px;font-family:var(--mono);font-size:11px;color:var(--faint)}
 .meter b{display:block;color:var(--text);font-size:15px;margin-top:2px}
+
+/* ── 인포그래픽 요소 ── */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-family:var(--mono);font-size:10.5px;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:3px 8px}
+.chip b{color:var(--amber);font-weight:600;margin-left:4px}
+.card{cursor:pointer}
+.card .expand{position:absolute;bottom:9px;right:12px;font-size:10px;color:var(--faint)}
+.balance{height:5px;border-radius:3px;background:var(--line);margin:10px 0 12px;overflow:hidden;display:flex}
+.balance i{display:block;height:100%;background:var(--up);transition:width .4s}
+.balance u{display:block;height:100%;background:var(--down);transition:width .4s}
+.gauge{display:flex;gap:4px;margin-bottom:6px}
+.gauge span{flex:1;height:9px;border-radius:3px;background:var(--line);position:relative}
+.gauge span.lit-up{background:var(--up)} .gauge span.lit-down{background:var(--down)} .gauge span.lit-hold{background:var(--hold)}
+.gauge-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--faint);margin-bottom:14px}
+.ladder{position:relative;height:64px;margin:14px 0 4px}
+.ladder .axis{position:absolute;left:0;right:0;top:30px;height:2px;background:var(--line)}
+.ladder .lv{position:absolute;top:0;transform:translateX(-50%);text-align:center;font-family:var(--mono);font-size:10px}
+.ladder .lv i{display:block;width:2px;height:18px;margin:12px auto 0;background:currentColor}
+.ladder .lv em{font-style:normal;display:block;font-size:10px;margin-top:3px}
+.lv.stop{color:var(--down)} .lv.entry{color:var(--amber)} .lv.target{color:var(--up)}
+.tbars{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.tbars h4{font-size:10px;font-family:var(--mono);letter-spacing:1.5px;color:var(--faint);margin-bottom:8px}
+.tbar{display:grid;grid-template-columns:76px 1fr 46px;gap:8px;align-items:center;margin-bottom:5px;font-family:var(--mono);font-size:10px;color:var(--dim)}
+.tbar i{display:block;height:7px;border-radius:3px;background:var(--amber);opacity:.85}
+/* ── 리포트 모달 ── */
+.modal{position:fixed;inset:0;background:rgba(5,7,11,.82);display:none;z-index:100;padding:4vh 4vw}
+.modal.open{display:flex}
+.modal .paper{background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:860px;width:100%;margin:auto;max-height:88vh;display:flex;flex-direction:column}
+.modal .paper header{border-bottom:1px solid var(--line);padding:14px 20px;display:flex;align-items:center}
+.modal .paper header h3{font-size:14px}
+.modal .paper header button{margin-left:auto;background:none;border:1px solid var(--line);color:var(--dim);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px}
+.modal .md{padding:20px 24px;overflow-y:auto;font-size:13.5px;line-height:1.75;word-break:keep-all}
+.md h1,.md h2,.md h3{margin:18px 0 8px;color:var(--text)}
+.md h1{font-size:17px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.md h2{font-size:15px;color:var(--amber)} .md h3{font-size:13.5px}
+.md p{margin:8px 0;color:var(--dim)} .md strong{color:var(--text)}
+.md ul{margin:8px 0 8px 18px;color:var(--dim)} .md li{margin:4px 0}
+.md table{border-collapse:collapse;margin:12px 0;width:100%;font-size:12.5px}
+.md th,.md td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+.md th{background:var(--panel2);color:var(--text);font-family:var(--mono);font-size:11px}
+.md td{color:var(--dim)} .md hr{border:none;border-top:1px solid var(--line);margin:16px 0}
 </style>
 </head>
 <body>
@@ -126,7 +167,8 @@ aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);ma
   <section class="stage" id="s-debate">
     <div class="stage-h"><span class="no">STAGE 2</span><h2>리서치팀 토론</h2><span class="st">대기</span></div>
     <div class="arena" id="arena">
-      <div class="duel"><span class="bull">▲ BULL</span><span class="bear">▼ BEAR</span></div>
+      <div class="duel"><span class="bull">▲ BULL <span id="bullN" style="opacity:.7"></span></span><span class="bear"><span id="bearN" style="opacity:.7"></span> BEAR ▼</span></div>
+      <div class="balance" aria-hidden="true"><i id="balBull" style="width:50%"></i><u id="balBear" style="width:50%"></u></div>
       <div class="chat" id="chat"><div style="color:var(--faint);font-size:12px">보고서 4건 수신 후 토론이 시작됩니다.</div></div>
     </div>
   </section>
@@ -155,7 +197,12 @@ aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);ma
     <div class="stage-h"><span class="no">STAGE 4</span><h2>포트폴리오 매니저 — 최종 결정</h2><span class="st">대기</span></div>
     <div class="verdict">
       <div class="stamp" id="stamp">···</div>
-      <div class="why" id="why">파이프라인 완료 시 최종 등급과 근거가 표시됩니다.</div>
+      <div style="flex:1;min-width:260px">
+        <div class="gauge" id="gauge" aria-label="5등급 게이지"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="gauge-labels"><span>S.SELL</span><span>SELL</span><span>HOLD</span><span>BUY</span><span>S.BUY</span></div>
+        <div class="ladder" id="ladder" style="display:none"><div class="axis"></div></div>
+        <div class="why" id="why">파이프라인 완료 시 최종 등급과 근거가 표시됩니다.</div>
+      </div>
     </div>
   </section>
 </main>
@@ -168,6 +215,7 @@ aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);ma
     <div>경과<b id="mTime">0.0s</b></div>
     <div>보고서<b id="mRep">0/4</b></div>
   </div>
+  <div class="tbars" id="tbars" style="display:none"><h4>ANALYST WALL TIME</h4></div>
 </aside>
 </div>
 
@@ -202,6 +250,97 @@ function bubble(speaker, content){
   const chat=$('#chat'); chat.appendChild(m); chat.scrollTop=chat.scrollHeight;
 }
 const RISK_AGENTS=['aggressive','neutral','conservative'];
+const fullReports={}; let bullN=0, bearN=0;
+
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function mdToHtml(src){
+  const lines=esc(src).split('\n'); const out=[]; let inUl=false, tbl=[];
+  const flushTbl=()=>{ if(!tbl.length) return;
+    const rows=tbl.filter(r=>!/^\s*\|?[\s:|-]+\|?\s*$/.test(r));
+    const cells=r=>r.replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+    let h='<table><tr>'+cells(rows[0]).map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+    rows.slice(1).forEach(r=>{h+='<tr>'+cells(r).map(c=>'<td>'+inline(c)+'</td>').join('')+'</tr>';});
+    out.push(h+'</table>'); tbl=[]; };
+  const inline=t=>t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`(.+?)`/g,'<code>$1</code>');
+  for(const raw of lines){
+    const l=raw.trimEnd();
+    if(/^\s*\|.*\|/.test(l)){ tbl.push(l); continue; } flushTbl();
+    if(inUl && !/^\s*[-*]\s+/.test(l)){ out.push('</ul>'); inUl=false; }
+    if(/^###\s+/.test(l)) out.push('<h3>'+inline(l.slice(4))+'</h3>');
+    else if(/^##\s+/.test(l)) out.push('<h2>'+inline(l.slice(3))+'</h2>');
+    else if(/^#\s+/.test(l)) out.push('<h1>'+inline(l.slice(2))+'</h1>');
+    else if(/^(---+|\*\*\*+)$/.test(l)) out.push('<hr>');
+    else if(/^\s*[-*]\s+/.test(l)){ if(!inUl){out.push('<ul>');inUl=true;} out.push('<li>'+inline(l.replace(/^\s*[-*]\s+/,''))+'</li>'); }
+    else if(l.trim()==='') {}
+    else out.push('<p>'+inline(l)+'</p>');
+  }
+  flushTbl(); if(inUl) out.push('</ul>');
+  return out.join('\n');
+}
+function openModal(title, md){
+  $('#modalTitle').textContent=title;
+  $('#modalBody').innerHTML=mdToHtml(md);
+  $('#modal').classList.add('open');
+}
+$('#modalClose')?.addEventListener('click',()=>$('#modal').classList.remove('open'));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#modal').classList.remove('open');});
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')$('#modal').classList.remove('open');});
+
+const AGENT_LABEL={market:'마켓 애널리스트',sentiment:'센티먼트 애널리스트',news:'뉴스 애널리스트',fundamentals:'펀더멘털 애널리스트',trader:'트레이더',aggressive:'공격형 리스크',neutral:'중립형 리스크',conservative:'보수형 리스크',final:'포트폴리오 매니저 최종 결정'};
+document.querySelectorAll('.card').forEach(c=>{
+  c.addEventListener('click',()=>{
+    const key=c.dataset.agent;
+    if(fullReports[key]) openModal(AGENT_LABEL[key]||key, fullReports[key]);
+  });
+});
+function chips(agent, metrics){
+  if(!metrics||!metrics.length) return;
+  const c=card(agent); if(!c) return;
+  let box=c.querySelector('.chips');
+  if(!box){box=document.createElement('div');box.className='chips';c.appendChild(box);}
+  box.innerHTML=metrics.map(m=>`<span class="chip">${m.label}<b>${m.value.toLocaleString()}</b></span>`).join('');
+}
+function markExpandable(agent){
+  const c=card(agent); if(!c||c.querySelector('.expand'))return;
+  const e=document.createElement('span'); e.className='expand'; e.textContent='클릭해서 전문 보기 ⤢'; c.appendChild(e);
+}
+function drawGauge(score){
+  const segs=$('#gauge').children; const idx=score+2; // -2..2 → 0..4
+  const cls= score>0?'lit-up':(score<0?'lit-down':'lit-hold');
+  for(let i=0;i<5;i++){segs[i].className = i===idx ? cls : '';}
+}
+function drawLadder(levels){
+  if(!levels||Object.keys(levels).length<2) return;
+  const box=$('#ladder'); box.style.display='block';
+  box.querySelectorAll('.lv').forEach(n=>n.remove());
+  const vals=Object.values(levels); const mn=Math.min(...vals), mx=Math.max(...vals);
+  const pad=(mx-mn)*0.12||mx*0.01;
+  const pos=v=>((v-(mn-pad))/((mx+pad)-(mn-pad)))*100;
+  const label={stop:'손절',entry:'진입',target:'목표'};
+  for(const [k,v] of Object.entries(levels)){
+    const d=document.createElement('div'); d.className='lv '+k;
+    d.style.left=Math.min(94,Math.max(6,pos(v)))+'%';
+    d.innerHTML=`${label[k]||k}<i></i><em>${v.toLocaleString()}</em>`;
+    box.appendChild(d);
+  }
+}
+function drawBalance(){
+  const total=bullN+bearN||1;
+  $('#balBull').style.width=(bullN/total*100)+'%';
+  $('#balBear').style.width=(bearN/total*100)+'%';
+  $('#bullN').textContent=bullN?`${bullN}`:''; $('#bearN').textContent=bearN?`${bearN}`:'';
+}
+function drawTelemetry(analysts){
+  const box=$('#tbars'); box.style.display='block';
+  const entries=Object.entries(analysts); if(!entries.length) return;
+  const mx=Math.max(...entries.map(([,v])=>v.seconds))||1;
+  box.querySelectorAll('.tbar').forEach(n=>n.remove());
+  for(const [k,v] of entries){
+    const d=document.createElement('div'); d.className='tbar';
+    d.innerHTML=`<span>${k}</span><i style="width:${(v.seconds/mx*100).toFixed(0)}%"></i><span>${v.seconds.toFixed(1)}s</span>`;
+    box.appendChild(d);
+  }
+}
 
 function reset(){
   evCount=0; repCount=0;
@@ -212,6 +351,10 @@ function reset(){
   ['market','sentiment','news','fundamentals','trader',...RISK_AGENTS].forEach(a=>{cardState(a,null,'대기');});
   ['#s-analysts','#s-debate','#s-risk','#s-final'].forEach(s=>stage(s,'대기'));
   $('#arena').classList.remove('active');
+  bullN=0;bearN=0;drawBalance();drawGauge(99);
+  $('#ladder').style.display='none';$('#tbars').style.display='none';
+  Object.keys(fullReports).forEach(k=>delete fullReports[k]);
+  document.querySelectorAll('.chips,.expand').forEach(n=>n.remove());
 }
 
 function handle(ev){
@@ -229,16 +372,19 @@ function handle(ev){
       break;
     case 'report':
       cardState(ev.agent,'done','완료'); cardOut(ev.agent, ev.bullets ? '· '+ev.bullets.join('\n· ') : (ev.summary || ev.content));
+      fullReports[ev.agent]=ev.content; markExpandable(ev.agent); chips(ev.agent, ev.metrics);
       repCount++; $('#mRep').textContent=`${repCount}/4`;
       log(`${ev.agent} 보고서 수신 (${ev.content.length.toLocaleString()}자)`);
       if(repCount>=4){stage('#s-analysts','완료','done'); stage('#s-debate','진행 중','on'); $('#arena').classList.add('active');}
       break;
     case 'telemetry': {
+      drawTelemetry(ev.analysts);
       const parts=Object.entries(ev.analysts).map(([k,v])=>`${k} ${v.seconds.toFixed(1)}s/${v.tool_calls}콜`);
       log('애널리스트 실측: '+parts.join(' · '),'ok');
       break;}
     case 'debate':
       bubble(ev.speaker, ev.content);
+      if(ev.speaker==='bull'){bullN++;} if(ev.speaker==='bear'){bearN++;} drawBalance();
       if(ev.speaker==='judge'){
         stage('#s-debate','완료','done'); $('#arena').classList.remove('active');
         stage('#s-risk','진행 중','on'); cardState('trader','active','작성 중');
@@ -247,18 +393,23 @@ function handle(ev){
       break;
     case 'trader':
       cardState('trader','done','완료'); cardOut('trader', ev.summary || ev.content);
+      fullReports['trader']=ev.content; markExpandable('trader'); if(ev.levels) drawLadder(ev.levels);
       RISK_AGENTS.forEach(a=>cardState(a,'active','토론 중'));
       log('트레이더 실행 계획 수신');
       break;
     case 'risk':
       cardState(ev.speaker,'done','발언 완료'); cardOut(ev.speaker, ev.content);
+      fullReports[ev.speaker]=(fullReports[ev.speaker]||'')+'\n\n'+ev.content; markExpandable(ev.speaker);
       log(`리스크: ${ev.speaker} 발언`);
       break;
     case 'final': {
       stage('#s-risk','완료','done'); RISK_AGENTS.forEach(a=>{const c=card(a); if(!c.classList.contains('done')) cardState(a,'done','완료');});
       stage('#s-final','완료','done');
       const st=$('#stamp'); st.textContent=ev.rating; st.className='stamp '+ev.bias;
-      $('#why').textContent=ev.content;
+      drawGauge(ev.score); if(ev.levels) drawLadder(ev.levels);
+      fullReports['final']=ev.content;
+      $('#why').innerHTML=mdToHtml(ev.summary||ev.content)+'<p style="margin-top:8px"><a href="#" id="finalFull" style="color:var(--amber)">전문 보기 ⤢</a></p>';
+      document.getElementById('finalFull').addEventListener('click',e=>{e.preventDefault();openModal(AGENT_LABEL.final, fullReports['final']);});
       log(`최종 등급: ${ev.rating} (${ev.action})`,'ok');
       break;}
     case 'artifact': {
@@ -328,5 +479,11 @@ $('#go').addEventListener('click',()=>{
   });
 });
 </script>
+<div class="modal" id="modal" role="dialog" aria-modal="true">
+  <div class="paper">
+    <header><h3 id="modalTitle">보고서</h3><button id="modalClose">닫기 ✕</button></header>
+    <div class="md" id="modalBody"></div>
+  </div>
+</div>
 </body>
 </html>

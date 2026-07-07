@@ -474,7 +474,9 @@ class TradingAgentsGraph:
 
         # Store current state for reflection.
         final_state["final_trade_signal"] = normalize_trade_signal(
-            final_state["final_trade_decision"]
+            final_state["final_trade_decision"],
+            trader_structured=final_state.get("trader_structured"),
+            pm_structured=final_state.get("pm_structured"),
         )
         self.curr_state = final_state
 

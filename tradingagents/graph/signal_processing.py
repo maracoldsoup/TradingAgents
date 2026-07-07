@@ -38,16 +38,56 @@ class TradeSignal:
         return asdict(self)
 
 
-def normalize_trade_signal(full_signal: str) -> dict[str, str | int]:
+def compose_levels(
+    trader_structured: dict | None,
+    pm_structured: dict | None,
+) -> dict[str, float]:
+    """Merge trader and PM structured fields into canonical price levels.
+
+    The PM speaks last, so its values override the trader's; the trader's
+    entry survives when the PM omits one (the PM often only restates stop
+    and target). Only fields the models actually emitted appear — the
+    dashboard's regex extractor remains a fallback for free-text runs.
+    """
+    trader = trader_structured or {}
+    pm = pm_structured or {}
+    mapping = (
+        ("entry", ("entry_price",)),
+        ("stop", ("stop_loss",)),
+        ("target", ("price_target",)),
+        ("position_size_pct", ("position_size_pct",)),
+    )
+    levels: dict[str, float] = {}
+    for canonical, field_names in mapping:
+        for source in (pm, trader):  # PM 우선
+            for field in field_names:
+                value = source.get(field)
+                if isinstance(value, (int, float)) and value > 0:
+                    levels[canonical] = float(value)
+                    break
+            if canonical in levels:
+                break
+    return levels
+
+
+def normalize_trade_signal(
+    full_signal: str,
+    trader_structured: dict | None = None,
+    pm_structured: dict | None = None,
+) -> dict:
     """Convert Portfolio Manager prose into the canonical signal vocabulary."""
     rating = parse_rating(full_signal)
-    return TradeSignal(
+    signal = TradeSignal(
         schema_version=1,
         rating=rating,
         action=rating_to_action(rating),
         bias=rating_to_bias(rating),
         score=rating_to_score(rating),
     ).as_dict()
+    levels = compose_levels(trader_structured, pm_structured)
+    if levels:
+        signal["levels"] = levels
+    return signal
 
 
 class SignalProcessor:

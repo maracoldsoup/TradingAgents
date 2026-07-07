@@ -13,6 +13,7 @@ from tradingagents.agents.utils.agent_utils import (
 )
 from tradingagents.agents.utils.structured import (
     bind_structured,
+    invoke_structured_with_parsed,
     invoke_structured_or_freetext,
 )
 
@@ -48,7 +49,7 @@ def create_trader(llm):
             },
         ]
 
-        trader_plan = invoke_structured_or_freetext(
+        trader_plan, parsed = invoke_structured_with_parsed(
             structured_llm,
             llm,
             messages,
@@ -59,6 +60,7 @@ def create_trader(llm):
         return {
             "messages": [AIMessage(content=trader_plan)],
             "trader_investment_plan": trader_plan,
+            "trader_structured": parsed.model_dump(mode="json") if parsed else {},
             "sender": name,
         }
 

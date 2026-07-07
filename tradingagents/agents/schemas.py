@@ -217,12 +217,37 @@ class PortfolioDecision(BaseModel):
         default=None,
         description="Optional target price in the instrument's quote currency.",
     )
+    entry_price: float | None = Field(
+        default=None,
+        description=(
+            "Final entry price in the instrument's quote currency. Carry over "
+            "the trader's entry unless the risk debate changed it; omit only "
+            "when the rating implies no new position (e.g. Hold with no adds)."
+        ),
+    )
+    stop_loss: float | None = Field(
+        default=None,
+        description=(
+            "Final stop-loss price in the instrument's quote currency, "
+            "reflecting any adjustment the risk committee argued for."
+        ),
+    )
+    position_size_pct: float | None = Field(
+        default=None,
+        description=(
+            "Final position size as a percentage of portfolio (number only, "
+            "e.g. 6 for 6%). Omit when not applicable."
+        ),
+    )
     time_horizon: str | None = Field(
         default=None,
         description="Optional recommended holding period, e.g. '3-6 months'.",
     )
 
-    @field_validator("price_target", mode="before")
+    @field_validator(
+        "price_target", "entry_price", "stop_loss", "position_size_pct",
+        mode="before",
+    )
     @classmethod
     def _nullish_float_to_none(cls, v):
         return _coerce_optional_float(v)
@@ -245,6 +270,12 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
     ]
     if decision.price_target is not None:
         parts.extend(["", f"**Price Target**: {decision.price_target}"])
+    if decision.entry_price is not None:
+        parts.extend(["", f"**Entry Price**: {decision.entry_price}"])
+    if decision.stop_loss is not None:
+        parts.extend(["", f"**Stop Loss**: {decision.stop_loss}"])
+    if decision.position_size_pct is not None:
+        parts.extend(["", f"**Position Size**: {decision.position_size_pct}%"])
     if decision.time_horizon:
         parts.extend(["", f"**Time Horizon**: {decision.time_horizon}"])
     return "\n".join(parts)

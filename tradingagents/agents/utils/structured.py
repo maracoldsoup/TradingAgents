@@ -46,6 +46,24 @@ def bind_structured(llm: Any, schema: type[T], agent_name: str) -> Any | None:
         return None
 
 
+def invoke_structured_with_parsed(
+    structured_llm: Any | None,
+    plain_llm: Any,
+    prompt: Any,
+    render: Callable[[T], str],
+    agent_name: str,
+) -> tuple[str, BaseModel | None]:
+    """Like :func:`invoke_structured_or_freetext`, but also returns the parsed
+    Pydantic instance (``None`` on free-text fallback).
+
+    The rendered markdown keeps feeding prose consumers (reports, memory,
+    downstream prompts); the parsed instance feeds structured consumers
+    (signal.json levels, dashboard) without a re-extraction pass.
+    """
+    text, parsed = _invoke_impl(structured_llm, plain_llm, prompt, render, agent_name)
+    return text, parsed
+
+
 def invoke_structured_or_freetext(
     structured_llm: Any | None,
     plain_llm: Any,
@@ -53,6 +71,17 @@ def invoke_structured_or_freetext(
     render: Callable[[T], str],
     agent_name: str,
 ) -> str:
+    text, _parsed = _invoke_impl(structured_llm, plain_llm, prompt, render, agent_name)
+    return text
+
+
+def _invoke_impl(
+    structured_llm: Any | None,
+    plain_llm: Any,
+    prompt: Any,
+    render: Callable[[T], str],
+    agent_name: str,
+) -> tuple[str, BaseModel | None]:
     """Run the structured call and render to markdown; fall back to free-text on any failure.
 
     ``prompt`` is whatever the underlying LLM accepts (a string for chat
@@ -68,7 +97,7 @@ def invoke_structured_or_freetext(
                 # the tool, leaving the parser with nothing to return. Treat it
                 # as a structured miss and fall back, with a clear reason.
                 raise ValueError("structured output returned no parsed result")
-            return render(result)
+            return render(result), result
         except Exception as exc:
             logger.warning(
                 "%s: structured-output invocation failed (%s); retrying once as free text",
@@ -76,4 +105,5 @@ def invoke_structured_or_freetext(
             )
 
     response = plain_llm.invoke(prompt)
-    return response.content
+    text = response.content if hasattr(response, "content") else str(response)
+    return text, None

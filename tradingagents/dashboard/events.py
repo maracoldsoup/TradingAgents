@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from tradingagents.graph.signal_processing import compose_levels
 from tradingagents.agents.utils.rating import (
     parse_rating,
     rating_to_action,
@@ -182,10 +183,14 @@ class DashboardEventTranslator:
         trader = (chunk.get("trader_investment_plan") or "").strip()
         if trader and not self._trader_sent:
             self._trader_sent = True
+            structured = chunk.get("trader_structured") or {}
             events.append({
                 "type": "trader",
                 "content": trader,
-                "levels": extract_price_levels(trader),
+                # 구조화 필드가 있으면 그것이 진실이고, 없을 때만 산문 추출
+                "levels": compose_levels(structured, None)
+                or extract_price_levels(trader),
+                "levels_source": "structured" if structured else "extracted",
                 **summarize_content(trader),
             })
 
@@ -210,7 +215,13 @@ class DashboardEventTranslator:
                     "action": rating_to_action(rating),
                     "bias": rating_to_bias(rating),
                     "score": rating_to_score(rating),
-                    "levels": extract_price_levels(final),
+                    "levels": compose_levels(
+                        chunk.get("trader_structured"), chunk.get("pm_structured")
+                    )
+                    or extract_price_levels(final),
+                    "levels_source": "structured"
+                    if (chunk.get("pm_structured") or chunk.get("trader_structured"))
+                    else "extracted",
                 }
             )
 

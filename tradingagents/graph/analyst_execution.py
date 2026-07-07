@@ -99,6 +99,12 @@ class AnalystWallTimeTracker:
         finished_at = monotonic() if completed_at is None else completed_at
         self._wall_times[analyst_key] = max(0.0, finished_at - started_at)
 
+    def set_exact(self, analyst_key: str, seconds: float) -> None:
+        """Record an exact measured duration (parallel mode telemetry)."""
+        if analyst_key not in ANALYST_NODE_SPECS:
+            raise ValueError(f"unknown analyst key: {analyst_key}")
+        self._wall_times[analyst_key] = max(0.0, seconds)
+
     def get_wall_times(self) -> dict[str, float]:
         return dict(self._wall_times)
 
@@ -119,6 +125,17 @@ def sync_analyst_tracker_from_chunk(
     chunk: dict[str, str],
     now: float | None = None,
 ) -> None:
+    # Parallel mode publishes exact measurements; prefer them over the
+    # report-appearance heuristic below (which assumes sequential order and
+    # would attribute the whole stage to the first analyst).
+    telemetry = chunk.get("analyst_telemetry") or {}
+    if telemetry:
+        for spec in tracker.plan.specs:
+            entry = telemetry.get(spec.key)
+            if entry and "seconds" in entry:
+                tracker.set_exact(spec.key, float(entry["seconds"]))
+        return
+
     current_time = monotonic() if now is None else now
     active_found = False
 

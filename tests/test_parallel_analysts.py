@@ -68,11 +68,17 @@ def test_parallel_node_merges_all_reports():
 
     out = node(_seed_state())
 
-    assert set(out) == {spec.report_key for spec in plan.specs}
+    expected = {spec.report_key for spec in plan.specs} | {"messages", "analyst_telemetry"}
+    assert set(out) == expected
     for spec in plan.specs:
         assert out[spec.report_key] == f"{spec.report_key} for 000660.KS"
-    # messages must stay isolated inside subgraphs — never merged back.
-    assert "messages" not in out
+    # analyst messages surface for logging (wiped later by Msg Clear Team)
+    assert len(out["messages"]) == len(plan.specs)
+    # exact per-analyst telemetry is published for the wall-time tracker
+    for spec in plan.specs:
+        entry = out["analyst_telemetry"][spec.key]
+        assert entry["seconds"] >= 0.0
+        assert entry["tool_calls"] == 0
 
 
 def test_parallel_node_overlaps_execution():
@@ -115,7 +121,8 @@ def test_partial_analyst_selection_parallel():
 
     out = node(_seed_state())
 
-    assert set(out) == {"market_report", "fundamentals_report"}
+    assert {"market_report", "fundamentals_report"} <= set(out)
+    assert set(out["analyst_telemetry"]) == {"market", "fundamentals"}
 
 
 def test_setup_graph_compiles_in_both_modes():
@@ -135,7 +142,30 @@ def test_setup_graph_compiles_in_both_modes():
         node_names = set(graph.get_graph().nodes)
         if flag:
             assert "Analyst Team" in node_names
+            assert "Msg Clear Team" in node_names
             assert "Market Analyst" not in node_names
         else:
             assert "Market Analyst" in node_names
             assert "Analyst Team" not in node_names
+
+
+def test_telemetry_feeds_wall_time_tracker():
+    from tradingagents.graph.analyst_execution import (
+        AnalystWallTimeTracker,
+        sync_analyst_tracker_from_chunk,
+    )
+
+    plan = build_analyst_execution_plan(("market", "social", "news", "fundamentals"))
+    tracker = AnalystWallTimeTracker(plan)
+    chunk = {
+        "analyst_telemetry": {
+            "market": {"seconds": 12.5, "tool_calls": 6},
+            "social": {"seconds": 65.4, "tool_calls": 3},
+            "news": {"seconds": 8.1, "tool_calls": 4},
+            "fundamentals": {"seconds": 9.9, "tool_calls": 4},
+        }
+    }
+    sync_analyst_tracker_from_chunk(tracker, chunk)
+    times = tracker.get_wall_times()
+    assert times["social"] == 65.4 and times["market"] == 12.5
+    assert "65.40s" in tracker.format_summary()

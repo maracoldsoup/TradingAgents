@@ -51,6 +51,9 @@ class AgentState(MessagesState):
     trade_date: Annotated[str, "What date we are trading at"]
 
     sender: Annotated[str, "Agent that sent this message"]
+    analyst_telemetry: Annotated[
+        dict, "Per-analyst wall-seconds / tool-call counts (parallel mode)"
+    ]
 
     # research step
     market_report: Annotated[str, "Report from the Market Analyst"]

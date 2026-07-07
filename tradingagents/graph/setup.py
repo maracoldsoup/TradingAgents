@@ -116,6 +116,9 @@ class GraphSetup:
                 "Analyst Team",
                 create_parallel_analysts_node(plan, subgraphs),
             )
+            # Surfaced analyst messages feed the CLI/war-room loggers, then
+            # get wiped here so the debate stage starts context-clean.
+            workflow.add_node("Msg Clear Team", create_msg_delete())
         else:
             for spec in plan.specs:
                 workflow.add_node(spec.agent_node, analyst_factories[spec.key]())
@@ -135,7 +138,8 @@ class GraphSetup:
         # Define edges
         if self.parallel_analysts:
             workflow.add_edge(START, "Analyst Team")
-            workflow.add_edge("Analyst Team", "Bull Researcher")
+            workflow.add_edge("Analyst Team", "Msg Clear Team")
+            workflow.add_edge("Msg Clear Team", "Bull Researcher")
         else:
             # Start with the first analyst
             workflow.add_edge(START, plan.specs[0].agent_node)

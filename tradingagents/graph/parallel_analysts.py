@@ -19,6 +19,7 @@ Trade-offs (documented, intentional):
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from time import monotonic
 from typing import Any, Callable
 
 from langgraph.graph import END, START, StateGraph
@@ -72,6 +73,14 @@ def create_parallel_analysts_node(
 ):
     """Return a main-graph node that runs all analyst subgraphs concurrently.
 
+    Observability: each subgraph is *streamed* (not invoked) so we can
+    measure exact per-analyst wall time and tool-call counts, published via
+    the ``analyst_telemetry`` state channel. All collected analyst messages
+    are returned on the shared ``messages`` channel so the CLI logger and
+    war-room capture them exactly as in sequential mode; the graph wiring
+    clears them (Msg Clear Team) before the debate stage, preserving the
+    context-hygiene contract.
+
     Failure policy: fail loud. A dead analyst report would silently skew the
     downstream debate, so the first subgraph exception aborts the run with
     the analyst named — consistent with the vendor-chain "no silent
@@ -81,20 +90,51 @@ def create_parallel_analysts_node(
 
     def parallel_analysts_node(state: AgentState) -> dict[str, Any]:
         seed = {k: state[k] for k in _SEED_KEYS if k in state}
+        seed_message_ids = {
+            getattr(m, "id", None) for m in seed.get("messages", [])
+        }
 
-        def run_one(spec: AnalystNodeSpec) -> tuple[str, str]:
+        def run_one(spec: AnalystNodeSpec) -> dict[str, Any]:
+            started = monotonic()
+            final_chunk: dict[str, Any] = {}
+            collected: dict[str, Any] = {}
+            tool_calls = 0
             try:
-                out = subgraphs[spec.key].invoke(dict(seed))
-            except Exception as exc:  # pragma: no cover - passthrough wrapper
+                for chunk in subgraphs[spec.key].stream(
+                    dict(seed), stream_mode="values"
+                ):
+                    final_chunk = chunk
+                    for message in chunk.get("messages", []):
+                        msg_id = getattr(message, "id", None)
+                        if msg_id is None or msg_id in seed_message_ids:
+                            continue
+                        if msg_id not in collected:
+                            collected[msg_id] = message
+                            if getattr(message, "tool_calls", None):
+                                tool_calls += len(message.tool_calls)
+            except Exception as exc:
                 raise RuntimeError(
                     f"{spec.agent_node} failed during parallel execution: {exc}"
                 ) from exc
-            return spec.report_key, out.get(spec.report_key, "") or ""
+            return {
+                "report_key": spec.report_key,
+                "report": final_chunk.get(spec.report_key, "") or "",
+                "messages": list(collected.values()),
+                "telemetry": {
+                    "seconds": monotonic() - started,
+                    "tool_calls": tool_calls,
+                },
+                "key": spec.key,
+            }
 
-        results: dict[str, str] = {}
+        results: dict[str, Any] = {"analyst_telemetry": {}}
+        surfaced_messages: list[Any] = []
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            for report_key, report in pool.map(run_one, plan.specs):
-                results[report_key] = report
+            for out in pool.map(run_one, plan.specs):
+                results[out["report_key"]] = out["report"]
+                results["analyst_telemetry"][out["key"]] = out["telemetry"]
+                surfaced_messages.extend(out["messages"])
+        results["messages"] = surfaced_messages
         return results
 
     return parallel_analysts_node

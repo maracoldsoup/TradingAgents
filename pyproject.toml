@@ -34,6 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dashboard = ["fastapi>=0.110", "uvicorn>=0.29"]
 dev = [
     "ruff>=0.15",
     "pytest>=8.0",

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AGENT DESK — LIVE</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0B0E14; --panel:#131824; --panel2:#0F131E; --line:#232B3D;
+  --text:#E8E3D5; --dim:#8B93A7; --faint:#5A6275;
+  --amber:#FFB000; --amber-dim:rgba(255,176,0,.14);
+  --up:#E8453C; --up-dim:rgba(232,69,60,.12);
+  --down:#3D7BE8; --down-dim:rgba(61,123,232,.12);
+  --hold:#9AA3B5;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans KR',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--ink);color:var(--text);font-family:var(--sans);min-height:100vh}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+header{display:flex;align-items:center;gap:16px;padding:18px 26px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-weight:900;font-size:19px;letter-spacing:-.5px}
+.brand em{font-style:normal;color:var(--amber)}
+.brand small{display:block;font-weight:400;font-size:11px;color:var(--faint);letter-spacing:2px;margin-top:2px}
+.ctrl{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tick-in{background:var(--panel);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:14px;padding:9px 13px;border-radius:6px;width:150px}
+.tick-in:focus{outline:2px solid var(--amber);outline-offset:1px}
+button.run{background:var(--amber);border:none;color:#14100A;font-weight:700;font-size:14px;padding:10px 20px;border-radius:6px;cursor:pointer}
+button.run:disabled{opacity:.4;cursor:default}
+.conn{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.conn.live{color:var(--amber)}
+.wrap{display:grid;grid-template-columns:1fr 380px;min-height:calc(100vh - 78px)}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+main{padding:24px 26px;border-right:1px solid var(--line)}
+aside{padding:24px 22px;background:var(--panel2)}
+.stage{margin-bottom:26px}
+.stage-h{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.stage-h .no{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:1px}
+.stage-h h2{font-size:14px;font-weight:700}
+.stage-h .st{margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--faint)}
+.stage-h .st.on{color:var(--amber)} .stage-h .st.done{color:var(--dim)}
+.rail{width:2px;height:18px;background:var(--line);margin:0 0 8px 11px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:13px 14px;position:relative;transition:border-color .3s}
+.card.active{border-color:var(--amber)}
+.card.active::after{content:"";position:absolute;inset:-1px;border-radius:9px;border:1px solid var(--amber);animation:pulse 1.4s ease-out infinite;pointer-events:none}
+@keyframes pulse{from{opacity:.8;transform:scale(1)}to{opacity:0;transform:scale(1.035)}}
+.card .who{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.avatar{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font-size:15px;background:var(--amber-dim);flex:none}
+.card .nm{font-weight:700;font-size:13px}
+.card .rl{font-size:11px;color:var(--dim)}
+.card .out{font-size:12px;line-height:1.55;color:var(--dim);min-height:52px;max-height:130px;overflow-y:auto;word-break:keep-all;white-space:pre-wrap}
+.card.done .out{color:var(--text)}
+.card .badge{position:absolute;top:11px;right:12px;font-family:var(--mono);font-size:10px;color:var(--faint)}
+.card.active .badge{color:var(--amber)} .card.done .badge{color:var(--dim)}
+.arena{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:16px}
+.arena.active{border-color:var(--amber)}
+.duel{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:12px}
+.duel .bull{color:var(--up)} .duel .bear{color:var(--down)}
+.chat{display:flex;flex-direction:column;gap:8px;min-height:40px;max-height:340px;overflow-y:auto}
+.msg{max-width:82%;padding:9px 12px;border-radius:9px;font-size:12.5px;line-height:1.55;word-break:keep-all;white-space:pre-wrap;opacity:0;transform:translateY(6px);animation:in .35s forwards}
+@keyframes in{to{opacity:1;transform:none}}
+.msg.bull{align-self:flex-start;background:var(--up-dim);border:1px solid rgba(232,69,60,.3)}
+.msg.bear{align-self:flex-end;background:var(--down-dim);border:1px solid rgba(61,123,232,.3)}
+.msg.judge{align-self:center;background:var(--amber-dim);border:1px solid rgba(255,176,0,.35);max-width:94%}
+.msg b{display:block;font-family:var(--mono);font-size:10px;margin-bottom:3px;opacity:.75}
+.verdict{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.stamp{font-family:var(--mono);font-weight:600;font-size:26px;letter-spacing:2px;border:3px solid var(--faint);color:var(--faint);border-radius:8px;padding:10px 20px;transform:rotate(-3deg)}
+.stamp.bullish{border-color:var(--up);color:var(--up);background:var(--up-dim)}
+.stamp.bearish{border-color:var(--down);color:var(--down);background:var(--down-dim)}
+.stamp.neutral{border-color:var(--hold);color:var(--hold)}
+.verdict .why{flex:1;min-width:220px;font-size:13px;line-height:1.65;color:var(--dim);word-break:keep-all;white-space:pre-wrap;max-height:260px;overflow-y:auto}
+aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);margin-bottom:12px}
+.log{font-family:var(--mono);font-size:11.5px;line-height:1.8;color:var(--dim);height:calc(100vh - 250px);min-height:300px;overflow-y:auto;word-break:break-all}
+.log div{opacity:0;animation:in .3s forwards}
+.log .t{color:var(--faint);margin-right:8px}
+.log .ok{color:var(--amber)}
+.log .err{color:var(--up)}
+.meter{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:flex;gap:18px;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.meter b{display:block;color:var(--text);font-size:15px;margin-top:2px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">AGENT <em>DESK</em><small>LIVE · TRADINGAGENTS PIPELINE</small></div>
+  <div class="ctrl">
+    <input class="tick-in" id="ticker" value="005930.KS" aria-label="종목 코드">
+    <button class="run" id="go">분석 시작</button>
+    <span class="conn" id="conn">대기</span>
+  </div>
+</header>
+
+<div class="wrap">
+<main>
+  <section class="stage" id="s-analysts">
+    <div class="stage-h"><span class="no">STAGE 1</span><h2>애널리스트팀 (병렬)</h2><span class="st">대기</span></div>
+    <div class="cards">
+      <div class="card" data-agent="market"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">📈</div><div><div class="nm">마켓</div><div class="rl">기술적 분석</div></div></div>
+        <div class="out">시세·지표 대기</div></div>
+      <div class="card" data-agent="sentiment"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">💬</div><div><div class="nm">센티먼트</div><div class="rl">여론·수급 심리</div></div></div>
+        <div class="out">뉴스·소셜 감성 대기</div></div>
+      <div class="card" data-agent="news"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">🌐</div><div><div class="nm">뉴스</div><div class="rl">국내외 뉴스·공시·매크로</div></div></div>
+        <div class="out">네이버·DART·FRED 대기</div></div>
+      <div class="card" data-agent="fundamentals"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">🧾</div><div><div class="nm">펀더멘털</div><div class="rl">재무제표 분석</div></div></div>
+        <div class="out">재무 데이터 대기</div></div>
+    </div>
+  </section>
+  <div class="rail"></div>
+
+  <section class="stage" id="s-debate">
+    <div class="stage-h"><span class="no">STAGE 2</span><h2>리서치팀 토론</h2><span class="st">대기</span></div>
+    <div class="arena" id="arena">
+      <div class="duel"><span class="bull">▲ BULL</span><span class="bear">▼ BEAR</span></div>
+      <div class="chat" id="chat"><div style="color:var(--faint);font-size:12px">보고서 4건 수신 후 토론이 시작됩니다.</div></div>
+    </div>
+  </section>
+  <div class="rail"></div>
+
+  <section class="stage" id="s-risk">
+    <div class="stage-h"><span class="no">STAGE 3</span><h2>트레이더 & 리스크 위원회</h2><span class="st">대기</span></div>
+    <div class="cards">
+      <div class="card" data-agent="trader"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">🎯</div><div><div class="nm">트레이더</div><div class="rl">실행 계획</div></div></div>
+        <div class="out">투자 계획 대기</div></div>
+      <div class="card" data-agent="aggressive"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">🔥</div><div><div class="nm">공격</div><div class="rl">기회 극대화</div></div></div>
+        <div class="out"></div></div>
+      <div class="card" data-agent="neutral"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">⚖️</div><div><div class="nm">중립</div><div class="rl">균형 판단</div></div></div>
+        <div class="out"></div></div>
+      <div class="card" data-agent="conservative"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">🛡️</div><div><div class="nm">보수</div><div class="rl">손실 방어</div></div></div>
+        <div class="out"></div></div>
+    </div>
+  </section>
+  <div class="rail"></div>
+
+  <section class="stage" id="s-final">
+    <div class="stage-h"><span class="no">STAGE 4</span><h2>포트폴리오 매니저 — 최종 결정</h2><span class="st">대기</span></div>
+    <div class="verdict">
+      <div class="stamp" id="stamp">···</div>
+      <div class="why" id="why">파이프라인 완료 시 최종 등급과 근거가 표시됩니다.</div>
+    </div>
+  </section>
+</main>
+
+<aside>
+  <h3>LIVE LOG</h3>
+  <div class="log" id="log"><div><span class="t">--:--:--</span>종목 입력 후 분석을 시작하세요.</div></div>
+  <div class="meter">
+    <div>이벤트<b id="mEv">0</b></div>
+    <div>경과<b id="mTime">0.0s</b></div>
+    <div>보고서<b id="mRep">0/4</b></div>
+  </div>
+</aside>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+let es=null, evCount=0, repCount=0, t0=0, timer=null;
+
+function log(msg, cls){
+  const d=document.createElement('div');
+  const t=new Date().toLocaleTimeString('ko-KR',{hour12:false});
+  d.innerHTML=`<span class="t">${t}</span><span class="${cls||''}">${msg}</span>`;
+  const box=$('#log'); box.appendChild(d); box.scrollTop=box.scrollHeight;
+}
+function stage(id, txt, cls){const st=$(id+' .st'); st.textContent=txt; st.className='st '+(cls||'');}
+function card(agent){return document.querySelector(`[data-agent="${agent}"]`);}
+function cardState(agent, state, badge){
+  const c=card(agent); if(!c) return;
+  c.classList.remove('active','done'); if(state) c.classList.add(state);
+  c.querySelector('.badge').textContent=badge;
+}
+function cardOut(agent, text){
+  const c=card(agent); if(!c) return;
+  c.querySelector('.out').textContent=text.length>600 ? text.slice(0,600)+' …' : text;
+}
+function bubble(speaker, content){
+  const label={bull:'BULL', bear:'BEAR', judge:'RESEARCH MANAGER'}[speaker]||speaker.toUpperCase();
+  const m=document.createElement('div'); m.className='msg '+(speaker==='judge'?'judge':speaker);
+  m.innerHTML=`<b>${label}</b>`;
+  const span=document.createElement('span');
+  span.textContent=content.length>900 ? content.slice(0,900)+' …' : content;
+  m.appendChild(span);
+  const chat=$('#chat'); chat.appendChild(m); chat.scrollTop=chat.scrollHeight;
+}
+const RISK_AGENTS=['aggressive','neutral','conservative'];
+
+function reset(){
+  evCount=0; repCount=0;
+  $('#mEv').textContent='0'; $('#mRep').textContent='0/4'; $('#mTime').textContent='0.0s';
+  $('#chat').innerHTML=''; $('#log').innerHTML='';
+  $('#stamp').textContent='···'; $('#stamp').className='stamp';
+  $('#why').textContent='파이프라인 완료 시 최종 등급과 근거가 표시됩니다.';
+  ['market','sentiment','news','fundamentals','trader',...RISK_AGENTS].forEach(a=>{cardState(a,null,'대기');});
+  ['#s-analysts','#s-debate','#s-risk','#s-final'].forEach(s=>stage(s,'대기'));
+  $('#arena').classList.remove('active');
+}
+
+function handle(ev){
+  evCount++; $('#mEv').textContent=evCount;
+  switch(ev.type){
+    case 'stage':
+      if(ev.stage==='start'){
+        log(`${ev.ticker} · ${ev.date} 파이프라인 시작`,'ok');
+        stage('#s-analysts','진행 중','on');
+        ['market','sentiment','news','fundamentals'].forEach(a=>cardState(a,'active','분석 중'));
+      } else if(ev.stage==='done'){
+        log(`완료 — 최종 시그널: ${ev.decision||''}`,'ok');
+        stopStream();
+      }
+      break;
+    case 'report':
+      cardState(ev.agent,'done','완료'); cardOut(ev.agent, ev.content);
+      repCount++; $('#mRep').textContent=`${repCount}/4`;
+      log(`${ev.agent} 보고서 수신 (${ev.content.length.toLocaleString()}자)`);
+      if(repCount>=4){stage('#s-analysts','완료','done'); stage('#s-debate','진행 중','on'); $('#arena').classList.add('active');}
+      break;
+    case 'telemetry': {
+      const parts=Object.entries(ev.analysts).map(([k,v])=>`${k} ${v.seconds.toFixed(1)}s/${v.tool_calls}콜`);
+      log('애널리스트 실측: '+parts.join(' · '),'ok');
+      break;}
+    case 'debate':
+      bubble(ev.speaker, ev.content);
+      if(ev.speaker==='judge'){
+        stage('#s-debate','완료','done'); $('#arena').classList.remove('active');
+        stage('#s-risk','진행 중','on'); cardState('trader','active','작성 중');
+      }
+      log(`토론: ${ev.speaker} 발언`);
+      break;
+    case 'trader':
+      cardState('trader','done','완료'); cardOut('trader', ev.content);
+      RISK_AGENTS.forEach(a=>cardState(a,'active','토론 중'));
+      log('트레이더 실행 계획 수신');
+      break;
+    case 'risk':
+      cardState(ev.speaker,'done','발언 완료'); cardOut(ev.speaker, ev.content);
+      log(`리스크: ${ev.speaker} 발언`);
+      break;
+    case 'final': {
+      stage('#s-risk','완료','done'); RISK_AGENTS.forEach(a=>{const c=card(a); if(!c.classList.contains('done')) cardState(a,'done','완료');});
+      stage('#s-final','완료','done');
+      const st=$('#stamp'); st.textContent=ev.rating; st.className='stamp '+ev.bias;
+      $('#why').textContent=ev.content;
+      log(`최종 등급: ${ev.rating} (${ev.action})`,'ok');
+      break;}
+    case 'error':
+      log('오류: '+ev.message,'err'); stopStream();
+      break;
+  }
+}
+
+function stopStream(){
+  if(es){es.close(); es=null;}
+  if(timer){clearInterval(timer); timer=null;}
+  $('#conn').textContent='종료'; $('#conn').classList.remove('live');
+  $('#go').disabled=false; $('#go').textContent='다시 실행';
+}
+
+$('#go').addEventListener('click',()=>{
+  const tk=$('#ticker').value.trim(); if(!tk) return;
+  reset(); $('#go').disabled=true;
+  t0=Date.now(); timer=setInterval(()=>{$('#mTime').textContent=((Date.now()-t0)/1000).toFixed(1)+'s';},200);
+  $('#conn').textContent='LIVE'; $('#conn').classList.add('live');
+  es=new EventSource(`/api/stream?ticker=${encodeURIComponent(tk)}`);
+  es.onmessage=e=>{try{handle(JSON.parse(e.data));}catch(err){log('파싱 오류: '+err,'err');}};
+  es.onerror=()=>{log('스트림 연결 종료','err'); stopStream();};
+});
+</script>
+</body>
+</html>

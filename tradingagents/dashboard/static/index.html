@@ -276,7 +276,7 @@ function bubble(speaker, content){
   const chat=$('#chat'); chat.appendChild(m); chat.scrollTop=chat.scrollHeight;
 }
 const RISK_AGENTS=['aggressive','neutral','conservative'];
-const fullReports={}; let bullN=0, bearN=0;
+const fullReports={}; let bullN=0, bearN=0; const mergedLevels={};
 
 function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function mdToHtml(src){
@@ -402,6 +402,7 @@ function reset(){
   Object.keys(fullReports).forEach(k=>delete fullReports[k]);
   document.querySelectorAll('.chips,.expand').forEach(n=>n.remove());
   [1,2,3,4].forEach(n=>setStep(n,null,'대기'));
+  Object.keys(mergedLevels).forEach(k=>delete mergedLevels[k]);
   $('#stats').style.display='none';
 }
 
@@ -445,7 +446,8 @@ function handle(ev){
       break;
     case 'trader':
       cardState('trader','done','완료'); cardOut('trader', ev.summary || ev.content);
-      fullReports['trader']=ev.content; markExpandable('trader'); if(ev.levels) drawLadder(ev.levels);
+      fullReports['trader']=ev.content; markExpandable('trader');
+      if(ev.levels){Object.assign(mergedLevels, ev.levels); drawLadder(mergedLevels);}
       RISK_AGENTS.forEach(a=>cardState(a,'active','토론 중'));
       log('트레이더 실행 계획 수신');
       break;
@@ -458,7 +460,9 @@ function handle(ev){
       stage('#s-risk','완료','done'); RISK_AGENTS.forEach(a=>{const c=card(a); if(!c.classList.contains('done')) cardState(a,'done','완료');});
       stage('#s-final','완료','done');
       const st=$('#stamp'); st.textContent=ev.rating; st.className='stamp '+ev.bias;
-      drawGauge(ev.score); if(ev.levels) drawLadder(ev.levels); drawStats(ev);
+      drawGauge(ev.score);
+      if(ev.levels) Object.assign(mergedLevels, ev.levels);
+      drawLadder(mergedLevels); drawStats({...ev, levels: mergedLevels});
       setStep(3,'done','심의 완료');setStep(4,'done',ev.rating);
       fullReports['final']=ev.content;
       $('#why').innerHTML=mdToHtml(ev.summary||ev.content)+'<p style="margin-top:8px"><a href="#" id="finalFull" style="color:var(--amber)">전문 보기 ⤢</a></p>';

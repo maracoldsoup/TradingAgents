@@ -650,6 +650,32 @@ def ensure_api_key(provider: str) -> str | None:
     return key
 
 
+def ensure_env_key(env_var: str, label: str) -> str | None:
+    """Prompt for a non-LLM API key and persist it to the project .env file."""
+    existing = os.environ.get(env_var)
+    if existing:
+        return existing
+
+    console.print(f"\n[yellow]{env_var} is not set in your environment.[/yellow]")
+    key = questionary.password(
+        f"Paste your {label} ({env_var}, will be saved to .env):",
+        style=questionary.Style([
+            ("text", "fg:cyan"),
+            ("highlighted", "noinherit"),
+        ]),
+    ).ask()
+    if not key:
+        console.print(f"[red]Skipped. Related data calls will fail until {env_var} is set.[/red]")
+        return None
+
+    env_path = find_dotenv(usecwd=True) or str(Path.cwd() / ".env")
+    Path(env_path).touch(exist_ok=True)
+    set_key(env_path, env_var, key)
+    os.environ[env_var] = key
+    console.print(f"[green]Saved {env_var} to {env_path}[/green]")
+    return key
+
+
 def ask_output_language() -> str:
     """Ask for report output language."""
     choice = questionary.select(

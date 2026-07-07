@@ -184,6 +184,7 @@ TradingAgents works with any market Yahoo Finance covers, using the exchange-suf
 - US: `AAPL`, `SPY`
 - Hong Kong: `0700.HK` · Tokyo: `7203.T` · London: `AZN.L`
 - India: `RELIANCE.NS`, `.BO` · Canada: `.TO` · Australia: `.AX`
+- Korea: `005930.KS` for KOSPI, `091990.KQ` for KOSDAQ
 - China A-shares: Shanghai `.SS`, Shenzhen `.SZ` (e.g. `600519.SS` for Kweichow Moutai)
 - Crypto: `BTC-USD`, `ETH-USD`
 

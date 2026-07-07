@@ -18,7 +18,32 @@ RATINGS_5_TIER: tuple[str, ...] = (
     "Buy", "Overweight", "Hold", "Underweight", "Sell",
 )
 
-_RATING_SET = {r.lower() for r in RATINGS_5_TIER}
+RATING_TO_ACTION: dict[str, str] = {
+    "Buy": "Buy",
+    "Overweight": "Buy",
+    "Hold": "Hold",
+    "Underweight": "Sell",
+    "Sell": "Sell",
+}
+
+RATING_TO_BIAS: dict[str, str] = {
+    "Buy": "bullish",
+    "Overweight": "bullish",
+    "Hold": "neutral",
+    "Underweight": "bearish",
+    "Sell": "bearish",
+}
+
+RATING_TO_SCORE: dict[str, int] = {
+    "Buy": 2,
+    "Overweight": 1,
+    "Hold": 0,
+    "Underweight": -1,
+    "Sell": -2,
+}
+
+_RATING_BY_LOWER = {r.lower(): r for r in RATINGS_5_TIER}
+_RATING_SET = set(_RATING_BY_LOWER)
 
 # Matches "Rating: X" / "rating - X" / "Rating: **X**" — tolerates markdown
 # bold wrappers and either a colon or hyphen separator.
@@ -37,12 +62,24 @@ def parse_rating(text: str, default: str = "Hold") -> str:
     for line in text.splitlines():
         m = _RATING_LABEL_RE.search(line)
         if m and m.group(1).lower() in _RATING_SET:
-            return m.group(1).capitalize()
+            return _RATING_BY_LOWER[m.group(1).lower()]
 
     for line in text.splitlines():
         for word in line.lower().split():
             clean = word.strip("*:.,")
             if clean in _RATING_SET:
-                return clean.capitalize()
+                return _RATING_BY_LOWER[clean]
 
     return default
+
+
+def rating_to_action(rating: str) -> str:
+    return RATING_TO_ACTION.get(rating, "Hold")
+
+
+def rating_to_bias(rating: str) -> str:
+    return RATING_TO_BIAS.get(rating, "neutral")
+
+
+def rating_to_score(rating: str) -> int:
+    return RATING_TO_SCORE.get(rating, 0)

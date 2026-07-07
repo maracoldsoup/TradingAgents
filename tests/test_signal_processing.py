@@ -11,7 +11,7 @@ to it.
 import pytest
 
 from tradingagents.agents.utils.rating import RATINGS_5_TIER, parse_rating
-from tradingagents.graph.signal_processing import SignalProcessor
+from tradingagents.graph.signal_processing import SignalProcessor, normalize_trade_signal
 
 # ---------------------------------------------------------------------------
 # Heuristic parser
@@ -60,6 +60,9 @@ class TestParseRating:
         for r in RATINGS_5_TIER:
             assert parse_rating(f"Rating: {r}") == r
 
+    def test_rating_case_is_canonical(self):
+        assert parse_rating("Rating: overweight") == "Overweight"
+
 
 # ---------------------------------------------------------------------------
 # SignalProcessor: thin adapter over the heuristic
@@ -87,3 +90,14 @@ class TestSignalProcessor:
     def test_default_when_no_rating_present(self):
         sp = SignalProcessor()
         assert sp.process_signal("Plain prose without a recommendation.") == "Hold"
+
+    def test_normalized_trade_signal_payload(self):
+        payload = normalize_trade_signal("**Rating**: Underweight\n\nTrim exposure.")
+        assert payload == {
+            "schema_version": 1,
+            "rating": "Underweight",
+            "action": "Sell",
+            "bias": "bearish",
+            "score": -1,
+            "source": "portfolio_manager",
+        }

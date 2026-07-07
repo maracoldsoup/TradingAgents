@@ -12,9 +12,42 @@ This module exists for backwards compatibility with callers that expect a
 
 from __future__ import annotations
 
+from dataclasses import asdict, dataclass
 from typing import Any
 
-from tradingagents.agents.utils.rating import parse_rating
+from tradingagents.agents.utils.rating import (
+    parse_rating,
+    rating_to_action,
+    rating_to_bias,
+    rating_to_score,
+)
+
+
+@dataclass(frozen=True)
+class TradeSignal:
+    """Machine-readable final trade signal for logs and dashboards."""
+
+    schema_version: int
+    rating: str
+    action: str
+    bias: str
+    score: int
+    source: str = "portfolio_manager"
+
+    def as_dict(self) -> dict[str, str | int]:
+        return asdict(self)
+
+
+def normalize_trade_signal(full_signal: str) -> dict[str, str | int]:
+    """Convert Portfolio Manager prose into the canonical signal vocabulary."""
+    rating = parse_rating(full_signal)
+    return TradeSignal(
+        schema_version=1,
+        rating=rating,
+        action=rating_to_action(rating),
+        bias=rating_to_bias(rating),
+        score=rating_to_score(rating),
+    ).as_dict()
 
 
 class SignalProcessor:

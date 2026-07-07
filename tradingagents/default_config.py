@@ -125,6 +125,12 @@ DEFAULT_CONFIG = _apply_env_overrides({
         "ECB Bank of England BOJ central bank policy",
         "oil commodities supply chain energy",
     ],
+    # Ticker-to-company-name hints for Korean news search. Extend this map as
+    # domestic coverage grows; unknown tickers fall back to the raw symbol.
+    "korean_ticker_names": {
+        "005930": "삼성전자",
+        "005930.KS": "삼성전자",
+    },
     # Data vendor configuration
     # Category-level configuration (default for all tools in category).
     # The configured value is the exact vendor chain — requests are NOT silently
@@ -134,7 +140,7 @@ DEFAULT_CONFIG = _apply_env_overrides({
         "core_stock_apis": "yfinance",       # Options: alpha_vantage, yfinance
         "technical_indicators": "yfinance",  # Options: alpha_vantage, yfinance
         "fundamental_data": "yfinance",      # Options: alpha_vantage, yfinance
-        "news_data": "yfinance",             # Options: alpha_vantage, yfinance
+        "news_data": "krnews,dart,yfinance", # Options: krnews, dart, alpha_vantage, yfinance
         "macro_data": "fred",                # Options: fred (needs FRED_API_KEY)
         "prediction_markets": "polymarket",  # Options: polymarket (keyless)
     },
@@ -157,6 +163,8 @@ DEFAULT_CONFIG = _apply_env_overrides({
         ".L":   "^FTSE",       # London (FTSE 100)
         ".TO":  "^GSPTSE",     # Toronto (TSX Composite)
         ".AX":  "^AXJO",       # Australia (ASX 200)
+        ".KS":  "^KS11",       # Korea Exchange KOSPI
+        ".KQ":  "^KQ11",       # KOSDAQ
         ".SS":  "000001.SS",   # Shanghai (SSE Composite)
         ".SZ":  "399001.SZ",   # Shenzhen (SZSE Component)
         "":     "SPY",         # default for US-listed tickers (no suffix)

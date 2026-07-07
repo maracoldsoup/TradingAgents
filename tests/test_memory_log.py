@@ -556,13 +556,16 @@ class TestDeferredReflection:
             "benchmark_map": {
                 ".T": "^N225", ".HK": "^HSI", ".NS": "^NSEI",
                 ".L": "^FTSE", ".TO": "^GSPTSE", ".AX": "^AXJO",
-                ".BO": "^BSESN", "": "SPY",
+                ".BO": "^BSESN", ".KS": "^KS11", ".KQ": "^KQ11",
+                "": "SPY",
             },
         }
         assert TradingAgentsGraph._resolve_benchmark(mock_graph, "7203.T") == "^N225"
         assert TradingAgentsGraph._resolve_benchmark(mock_graph, "0700.HK") == "^HSI"
         assert TradingAgentsGraph._resolve_benchmark(mock_graph, "RELIANCE.NS") == "^NSEI"
         assert TradingAgentsGraph._resolve_benchmark(mock_graph, "AZN.L") == "^FTSE"
+        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "005930.KS") == "^KS11"
+        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "091990.KQ") == "^KQ11"
 
     def test_resolve_benchmark_china_a_shares(self):
         """A-share tickers route to their exchange composite (uses the real
@@ -869,3 +872,5 @@ class TestLegacyRemoval:
         assert len(entries) == 1
         assert entries[0]["ticker"] == "NVDA"
         assert entries[0]["pending"] is True
+        assert fake_state["final_trade_signal"]["rating"] == "Buy"
+        assert fake_state["final_trade_signal"]["score"] == 2

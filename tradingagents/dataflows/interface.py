@@ -17,7 +17,9 @@ from .errors import (
     VendorNotConfiguredError,
     VendorRateLimitError,
 )
+from .dart import get_news_dart
 from .fred import get_macro_data as get_fred_macro_data
+from .korean_news import get_news_krnews
 from .polymarket import get_prediction_markets as get_polymarket_prediction_markets
 from .y_finance import (
     get_balance_sheet as get_yfinance_balance_sheet,
@@ -82,6 +84,8 @@ VENDOR_LIST = [
     "fred",
     "polymarket",
     "alpha_vantage",
+    "dart",
+    "krnews",
 ]
 
 # Optional enrichment categories. These add macro/event context to the news
@@ -122,6 +126,8 @@ VENDOR_METHODS = {
     },
     # news_data
     "get_news": {
+        "krnews": get_news_krnews,
+        "dart": get_news_dart,
         "alpha_vantage": get_alpha_vantage_news,
         "yfinance": get_news_yfinance,
     },
@@ -192,6 +198,9 @@ def route_to_vendor(method: str, *args, **kwargs):
     else:
         vendor_chain = all_available_vendors
 
+    if method == "get_news":
+        return _route_news_to_vendors(vendor_chain, method, category, *args, **kwargs)
+
     last_no_data: NoMarketDataError | None = None
     first_error: Exception | None = None
     for vendor in vendor_chain:
@@ -250,6 +259,108 @@ def route_to_vendor(method: str, *args, **kwargs):
     # first real error (e.g. the primary vendor's network failure). Optional
     # enrichment categories degrade to a sentinel instead, so flavour data can't
     # abort the run.
+    if first_error is not None:
+        if category in OPTIONAL_CATEGORIES:
+            logger.warning("Optional %s unavailable for %s: %s", category, method, first_error)
+            return (
+                f"DATA_UNAVAILABLE: optional {category} could not be retrieved "
+                f"({first_error}). Proceed without it; do not fabricate values."
+            )
+        raise first_error
+
+    raise RuntimeError(f"No available vendor for '{method}'")
+
+
+def _route_news_to_vendors(vendor_chain: list[str], method: str, category: str, *args, **kwargs):
+    """Combine Korean local news and disclosure feeds before broad fallbacks.
+
+    ``krnews`` and ``dart`` are complementary: one is media flow, the other is
+    filings. Treat them as enrichment sources when configured together, while
+    keeping yfinance/alpha_vantage as broad fallbacks if neither local source can
+    serve the request.
+    """
+    local_vendors = {"krnews", "dart"}
+    local_outputs: list[str] = []
+    first_error: Exception | None = None
+    last_no_data: NoMarketDataError | None = None
+
+    for vendor in vendor_chain:
+        if vendor not in local_vendors:
+            continue
+        vendor_impl = VENDOR_METHODS[method][vendor]
+        impl_func = vendor_impl[0] if isinstance(vendor_impl, list) else vendor_impl
+        try:
+            output = impl_func(*args, **kwargs)
+        except VendorRateLimitError:
+            logger.warning("Vendor %r rate-limited for %s; trying next vendor.", vendor, method)
+            continue
+        except VendorNotConfiguredError as e:
+            logger.warning("Vendor %r not configured for %s; trying next vendor.", vendor, method)
+            if first_error is None:
+                first_error = e
+            continue
+        except NoMarketDataError as e:
+            last_no_data = e
+            continue
+        except Exception as e:
+            logger.warning("Vendor %r failed for %s: %s", vendor, method, e)
+            if first_error is None:
+                first_error = e
+            continue
+        if output:
+            local_outputs.append(output)
+
+    if local_outputs:
+        if first_error is not None:
+            logger.warning(
+                "Returning partial local news for %s, but a vendor errored earlier: %s",
+                method,
+                first_error,
+            )
+        return "\n\n---\n\n".join(local_outputs)
+
+    for vendor in vendor_chain:
+        if vendor in local_vendors:
+            continue
+        vendor_impl = VENDOR_METHODS[method][vendor]
+        impl_func = vendor_impl[0] if isinstance(vendor_impl, list) else vendor_impl
+        try:
+            return impl_func(*args, **kwargs)
+        except VendorRateLimitError:
+            logger.warning("Vendor %r rate-limited for %s; trying next vendor.", vendor, method)
+            continue
+        except VendorNotConfiguredError as e:
+            logger.warning("Vendor %r not configured for %s; trying next vendor.", vendor, method)
+            if first_error is None:
+                first_error = e
+            continue
+        except NoMarketDataError as e:
+            last_no_data = e
+            continue
+        except Exception as e:
+            logger.warning("Vendor %r failed for %s: %s", vendor, method, e)
+            if first_error is None:
+                first_error = e
+            continue
+
+    if last_no_data is not None:
+        if first_error is not None:
+            logger.warning(
+                "Returning NO_DATA for %s, but a vendor errored earlier: %s",
+                method,
+                first_error,
+            )
+        sym = last_no_data.symbol
+        canonical = last_no_data.canonical
+        resolved = "" if canonical == sym else f" (resolved to '{canonical}')"
+        reason = f" ({last_no_data.detail})" if last_no_data.detail else ""
+        return (
+            f"NO_DATA_AVAILABLE: No usable market data for '{sym}'{resolved} from "
+            f"any configured vendor{reason}. The symbol may be invalid, delisted, "
+            f"not covered, or the vendor returned stale data. Do not estimate or "
+            f"fabricate values — report that data is unavailable for this symbol."
+        )
+
     if first_error is not None:
         if category in OPTIONAL_CATEGORIES:
             logger.warning("Optional %s unavailable for %s: %s", category, method, first_error)

@@ -146,3 +146,19 @@ def test_ensure_api_key_updates_existing_env_file(monkeypatch, tmp_path, cli_uti
     assert "OPENAI_API_KEY" in content and "sk-existing" in content
     assert "OTHER=value" in content
     assert "OPENROUTER_API_KEY" in content and "sk-openrouter-new" in content
+
+
+def test_ensure_env_key_prompts_and_writes_to_env(monkeypatch, tmp_path, cli_utils):
+    """Data-provider keys use the same project .env persistence path."""
+    monkeypatch.delenv("FRED_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    fake_prompt = type("P", (), {"ask": staticmethod(lambda: "fred-test-key")})()
+    with patch.object(cli_utils.questionary, "password", return_value=fake_prompt):
+        result = cli_utils.ensure_env_key("FRED_API_KEY", "FRED API key")
+
+    assert result == "fred-test-key"
+    assert os.environ["FRED_API_KEY"] == "fred-test-key"
+    env_file = tmp_path / ".env"
+    assert "FRED_API_KEY" in env_file.read_text()
+    assert "fred-test-key" in env_file.read_text()

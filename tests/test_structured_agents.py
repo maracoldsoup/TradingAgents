@@ -7,7 +7,7 @@ behavior we added for the Trader, Research Manager, and Sentiment Analyst
 so they share the same deterministic output shape.
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -347,6 +347,13 @@ def _make_sentiment_state():
     }
 
 
+def _make_korean_sentiment_state():
+    state = _make_sentiment_state()
+    state["company_of_interest"] = "005930.KS"
+    state["trade_date"] = "2026-07-07"
+    return state
+
+
 def _structured_sentiment_llm(captured: dict, report: SentimentReport | None = None):
     """MagicMock LLM whose structured binding captures the prompt and returns
     a real SentimentReport so render_sentiment_report works."""
@@ -390,6 +397,19 @@ class TestSentimentAnalystAgent:
         captured = {}
         create_sentiment_analyst(_structured_sentiment_llm(captured))(_make_sentiment_state())
         assert any("NVDA" in str(m) for m in captured["prompt"])
+
+    def test_korean_equity_prompt_contains_datalab_block(self):
+        captured = {}
+        with patch(
+            "tradingagents.agents.analysts.sentiment_analyst.fetch_naver_datalab_sentiment",
+            return_value="## Naver DataLab Search Interest: 삼성전자",
+        ):
+            create_sentiment_analyst(_structured_sentiment_llm(captured))(
+                _make_korean_sentiment_state()
+            )
+        prompt_text = "\n".join(str(m) for m in captured["prompt"])
+        assert "Korean market sentiment proxy" in prompt_text
+        assert "Naver DataLab Search Interest" in prompt_text
 
     def test_falls_back_to_freetext_when_structured_unavailable(self):
         plain = "**Overall Sentiment:** **Bearish** (Score: 3.0/10)\n**Confidence:** Low\n\nLimited data."

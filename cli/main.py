@@ -31,6 +31,7 @@ from cli.utils import (
     confirm_ollama_endpoint,
     detect_asset_type,
     ensure_api_key,
+    ensure_env_key,
     get_ticker,
     prompt_openai_compatible_url,
     resolve_backend_url,
@@ -57,6 +58,33 @@ app = typer.Typer(
     help="TradingAgents CLI: Multi-Agents LLM Financial Trading Framework",
     add_completion=True,  # Enable shell completion
 )
+
+
+def _configured_vendors(category: str) -> set[str]:
+    raw = DEFAULT_CONFIG.get("data_vendors", {}).get(category, "")
+    return {vendor.strip().lower() for vendor in raw.split(",") if vendor.strip()}
+
+
+def _is_korean_equity(ticker: str) -> bool:
+    normalized = ticker.upper()
+    return normalized.endswith((".KS", ".KQ")) or normalized.split(".", 1)[0].isdigit()
+
+
+def ensure_data_api_keys(ticker: str, selected_analysts) -> None:
+    """Prompt for data-provider keys needed by the selected analyst set."""
+    analyst_values = {getattr(analyst, "value", str(analyst)) for analyst in selected_analysts}
+    if "news" not in analyst_values:
+        return
+
+    if "fred" in _configured_vendors("macro_data"):
+        ensure_env_key("FRED_API_KEY", "FRED API key")
+
+    if _is_korean_equity(ticker) and "krnews" in _configured_vendors("news_data"):
+        ensure_env_key("NAVER_CLIENT_ID", "Naver client ID")
+        ensure_env_key("NAVER_CLIENT_SECRET", "Naver client secret")
+
+    if _is_korean_equity(ticker) and "dart" in _configured_vendors("news_data"):
+        ensure_env_key("OPENDART_API_KEY", "OpenDART API key")
 
 
 # Create a deque to store recent messages with a maximum length
@@ -585,6 +613,7 @@ def get_user_selections():
     console.print(
         f"[green]Selected analysts:[/green] {', '.join(analyst.value for analyst in selected_analysts)}"
     )
+    ensure_data_api_keys(selected_ticker, selected_analysts)
 
     # Step 5: Research depth (skipped when both round counts are set via env).
     # Research depth maps to the debate + risk round counts; when both are

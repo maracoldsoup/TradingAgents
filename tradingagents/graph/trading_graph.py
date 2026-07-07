@@ -39,7 +39,7 @@ from .conditional_logic import ConditionalLogic
 from .propagation import Propagator
 from .reflection import Reflector
 from .setup import GraphSetup
-from .signal_processing import SignalProcessor
+from .signal_processing import SignalProcessor, normalize_trade_signal
 
 logger = logging.getLogger(__name__)
 
@@ -460,6 +460,9 @@ class TradingAgentsGraph:
             final_state = self.graph.invoke(init_agent_state, **args)
 
         # Store current state for reflection.
+        final_state["final_trade_signal"] = normalize_trade_signal(
+            final_state["final_trade_decision"]
+        )
         self.curr_state = final_state
 
         # Log state to disk.
@@ -511,6 +514,8 @@ class TradingAgentsGraph:
             },
             "investment_plan": final_state["investment_plan"],
             "final_trade_decision": final_state["final_trade_decision"],
+            "final_trade_signal": final_state.get("final_trade_signal")
+            or normalize_trade_signal(final_state["final_trade_decision"]),
         }
 
         # Save to file. Reject ticker values that would escape the

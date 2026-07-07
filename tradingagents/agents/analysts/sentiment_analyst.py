@@ -40,6 +40,10 @@ from tradingagents.agents.utils.structured import (
     invoke_structured_or_freetext,
 )
 from tradingagents.dataflows.reddit import fetch_reddit_posts
+from tradingagents.dataflows.korean_sentiment import (
+    fetch_naver_datalab_sentiment,
+    is_korean_equity,
+)
 from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
 
 
@@ -69,6 +73,11 @@ def create_sentiment_analyst(llm):
         news_block = get_news.func(ticker, start_date, end_date)
         stocktwits_block = fetch_stocktwits_messages(ticker, limit=30)
         reddit_block = fetch_reddit_posts(ticker)
+        korean_sentiment_block = (
+            fetch_naver_datalab_sentiment(ticker, end_date)
+            if is_korean_equity(ticker)
+            else ""
+        )
 
         system_message = _build_system_message(
             ticker=ticker,
@@ -77,6 +86,7 @@ def create_sentiment_analyst(llm):
             news_block=news_block,
             stocktwits_block=stocktwits_block,
             reddit_block=reddit_block,
+            korean_sentiment_block=korean_sentiment_block,
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -126,8 +136,20 @@ def _build_system_message(
     news_block: str,
     stocktwits_block: str,
     reddit_block: str,
+    korean_sentiment_block: str = "",
 ) -> str:
     """Assemble the sentiment-analyst system message with structured data blocks."""
+    korean_section = ""
+    if korean_sentiment_block:
+        korean_section = f"""
+### Korean market sentiment proxy — Naver DataLab search interest
+Official search-attention trend for Korean equities. This measures attention momentum, not direct bullish/bearish opinion.
+
+<start_of_korean_sentiment>
+{korean_sentiment_block}
+<end_of_korean_sentiment>
+"""
+
     return f"""You are a financial market sentiment analyst. Your task is to produce a comprehensive sentiment report for {ticker} covering the period from {start_date} to {end_date}, drawing on three complementary data sources that have already been collected for you.
 
 ## Data sources (pre-fetched, in this prompt)
@@ -152,6 +174,7 @@ Community discussion. Engagement signal via upvote score and comment count. Subr
 <start_of_reddit>
 {reddit_block}
 <end_of_reddit>
+{korean_section}
 
 ## How to analyze this data (best practices)
 
@@ -169,7 +192,9 @@ Community discussion. Engagement signal via upvote score and comment count. Subr
 
 7. **Identify catalysts and risks** that emerge across sources — news of upcoming earnings, product launches, competitive threats, macro headlines, etc.
 
-8. **Past sentiment is not predictive.** Frame your conclusions as signal for the trader to weigh alongside fundamentals and technicals, not as a price call.
+8. **For Korean equities, use Naver DataLab as an attention proxy only.** Rising search interest can confirm that a narrative is gaining attention, but it does not reveal whether investors are bullish or bearish unless paired with news/community evidence.
+
+9. **Past sentiment is not predictive.** Frame your conclusions as signal for the trader to weigh alongside fundamentals and technicals, not as a price call.
 
 ## Output fields
 

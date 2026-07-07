@@ -18,6 +18,7 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_MAX_DEBATE_ROUNDS":    "max_debate_rounds",
     "TRADINGAGENTS_MAX_RISK_ROUNDS":      "max_risk_discuss_rounds",
     "TRADINGAGENTS_CHECKPOINT_ENABLED":   "checkpoint_enabled",
+    "TRADINGAGENTS_PARALLEL_ANALYSTS":    "parallel_analysts",
     "TRADINGAGENTS_BENCHMARK_TICKER":     "benchmark_ticker",
     "TRADINGAGENTS_TEMPERATURE":          "temperature",
     "TRADINGAGENTS_LLM_MAX_RETRIES":      "llm_max_retries",
@@ -133,6 +134,10 @@ DEFAULT_CONFIG = _apply_env_overrides({
         "005930": "삼성전자",
         "005930.KS": "삼성전자",
     },
+    # Run all selected analysts concurrently (isolated subgraphs). Faster,
+    # but coarser checkpoints and higher burst RPM against the LLM provider;
+    # set false (or TRADINGAGENTS_PARALLEL_ANALYSTS=false) on free API tiers.
+    "parallel_analysts": True,
     # Data vendor configuration
     # Category-level configuration (default for all tools in category).
     # The configured value is the exact vendor chain — requests are NOT silently

@@ -218,3 +218,19 @@ def test_sse_stream_surfaces_graph_error():
         ]
     errors = [p for p in payloads if p["type"] == "error"]
     assert errors and "vendor exploded" in errors[0]["message"]
+
+
+def test_search_ranks_large_caps_above_alphabetical_order():
+    from tradingagents.dashboard.server import search_names
+
+    crowd = {
+        "005930": "삼성전자", "009150": "삼성전기", "028260": "삼성물산",
+        "032830": "삼성생명", "018260": "삼성에스디에스", "006400": "삼성SDI",
+        "000810": "삼성화재", "207940": "삼성바이오로직스", "001360": "삼성제약",
+        "010140": "삼성중공업", "016360": "삼성증권", "029780": "삼성카드",
+        "068290": "삼성출판사", "006660": "삼성공조", "145990": "삼양사",
+    }
+    rows = search_names(crowd, "삼성", limit=12)
+    codes = [r["code"] for r in rows]
+    # 시총 상위(전자)가 가나다 컷에 밀려 사라지면 안 된다
+    assert "005930" in codes[:3]

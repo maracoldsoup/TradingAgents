@@ -51,6 +51,18 @@ def _default_suffix_prober(ticker: str) -> bool:
         return False
 
 
+# Large-cap KRX codes get a rank boost inside each match bucket, so
+# "삼성" surfaces 삼성전자 above 삼성공조 despite alphabetical order.
+# Codes are stable identifiers; order is coarse market-cap tiering.
+_POPULAR_KRX: dict[str, int] = {code: i for i, code in enumerate((
+    "005930", "000660", "373220", "207940", "005380", "000270", "068270",
+    "035420", "051910", "006400", "005490", "105560", "035720", "055550",
+    "012330", "028260", "066570", "032830", "015760", "009150", "086790",
+    "034730", "003670", "096770", "010130", "011200", "316140", "402340",
+    "000810", "018260", "247540", "086520", "091990", "022100", "293490",
+))}
+
+
 def search_names(name_map: dict[str, str], query: str, limit: int = 12) -> list[dict[str, str]]:
     """Unified picker search: global symbols + KRX names.
 
@@ -75,7 +87,16 @@ def search_names(name_map: dict[str, str], query: str, limit: int = 12) -> list[
             name_pre.append((code, name))
         elif ql in nl:
             name_sub.append((code, name))
-    ranked = exact + sorted(code_pre) + sorted(name_pre, key=lambda x: x[1]) + sorted(name_sub, key=lambda x: x[1])
+    def _rank(item):
+        code, name = item
+        return (_POPULAR_KRX.get(code, 999), name)
+
+    ranked = (
+        exact
+        + sorted(code_pre, key=_rank)
+        + sorted(name_pre, key=_rank)
+        + sorted(name_sub, key=_rank)
+    )
     rows = [{"code": c, "name": n, "market": "KR"} for c, n in ranked]
     for item in _GLOBAL_SYMBOLS:
         hay = f"{item['symbol']} {item['name']}".lower()

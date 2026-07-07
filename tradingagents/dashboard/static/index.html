@@ -3,736 +3,330 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TradingAgents War Room</title>
+<title>AGENT DESK — LIVE</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f4f1e8; --paper:#fffaf0; --ink:#161616; --line:#202020;
-  --panel:#101820; --panel2:#172532; --muted:#5d6672; --faint:#8a8f98;
-  --gold:#c68b1d; --green:#248f5c; --red:#c84343; --blue:#2f67b1; --violet:#7357b8;
-  --cream:#f7edd6; --soft:#e7dfd0;
-  --sans:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;
-  --mono:"SFMono-Regular","Consolas","Liberation Mono",monospace;
+  --ink:#0B0E14; --panel:#131824; --panel2:#0F131E; --line:#232B3D;
+  --text:#E8E3D5; --dim:#8B93A7; --faint:#5A6275;
+  --amber:#FFB000; --amber-dim:rgba(255,176,0,.14);
+  --up:#E8453C; --up-dim:rgba(232,69,60,.12);
+  --down:#3D7BE8; --down-dim:rgba(61,123,232,.12);
+  --hold:#9AA3B5;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans KR',sans-serif;
 }
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--sans)}
-button,input{font:inherit}
-button{cursor:pointer}
-.app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
-.topbar{display:grid;grid-template-columns:340px minmax(360px,1fr) auto;gap:16px;align-items:center;padding:14px 20px;border-bottom:3px solid var(--line);background:#101820;color:#fff;position:sticky;top:0;z-index:10}
-.brand{font-weight:900;letter-spacing:.2px}
-.brand span{color:var(--gold)}
-.brand small{display:block;margin-top:2px;color:#b9c3d2;font:11px var(--mono);letter-spacing:1.4px}
-.build-mark{display:inline-block;margin-left:8px;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:3px 7px;color:#fff;font:10px var(--mono);vertical-align:middle;background:#c84343}
-.search{position:relative;display:grid;grid-template-columns:1fr 124px;gap:8px}
-.search input{height:42px;border:2px solid #354355;border-radius:6px;background:#fff;color:#111;padding:0 12px;font-family:var(--mono);outline:none}
-.search input:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(242,184,75,.15)}
-.run{height:42px;border:2px solid #111;border-radius:6px;background:#ffc247;color:#171007;font-weight:900;box-shadow:3px 3px 0 #000}
-.run:disabled{opacity:.5;cursor:default}
-.suggest{position:absolute;z-index:20;left:0;right:132px;top:48px;border:2px solid var(--line);background:#fff;box-shadow:6px 6px 0 rgba(0,0,0,.25);display:none;max-height:310px;overflow:auto}
-.suggest.on{display:block}
-.pick{display:grid;grid-template-columns:100px 1fr 62px;gap:8px;width:100%;padding:10px 12px;border:0;border-bottom:1px solid #ddd;background:transparent;color:#111;text-align:left}
-.pick:hover{background:#f1eadc}
-.pick code{font-family:var(--mono);color:var(--gold)}
-.pick span{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pick b{color:var(--faint);font-size:12px;text-align:right}
-.status{font:12px var(--mono);color:#b9c3d2;white-space:nowrap}
-.status.live{color:var(--green)}
-.shell{display:grid;grid-template-columns:320px minmax(680px,1fr) 420px;min-height:0}
-.left,.right{background:#ede5d6;padding:18px;overflow:auto}
-.left{border-right:3px solid var(--line)}
-.right{border-left:3px solid var(--line)}
-.main{padding:22px;overflow:auto;background:
-  linear-gradient(90deg,rgba(0,0,0,.035) 1px,transparent 1px),
-  linear-gradient(rgba(0,0,0,.035) 1px,transparent 1px),
-  #f8f3e8;
-  background-size:24px 24px}
-.label{font:11px var(--mono);letter-spacing:1.6px;color:#4e5661;text-transform:uppercase;margin:0 0 10px}
-.selected-symbol{border:3px solid var(--line);background:#fffaf0;border-radius:6px;padding:13px;margin-bottom:14px;box-shadow:4px 4px 0 rgba(0,0,0,.18)}
-.selected-symbol strong{display:block;font-family:var(--mono);font-size:20px;color:var(--gold)}
-.selected-symbol span{display:block;color:var(--muted);font-size:13px;margin-top:4px}
-.picker-help{border:2px solid #cfc4b1;background:#fffaf0;border-radius:6px;padding:11px;margin-bottom:14px;color:#5d6672;font-size:12px;line-height:1.5}
-.watchlist{display:grid;gap:8px;margin-bottom:18px}
-.watch{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:2px solid #cfc4b1;background:#fffaf0;color:#111;border-radius:6px;padding:10px;text-align:left}
-.watch:hover,.watch.active{border-color:var(--line);background:#ffe0a3;box-shadow:3px 3px 0 rgba(0,0,0,.18)}
-.watch strong{display:block;font-family:var(--mono);font-size:14px}
-.watch span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
-.watch em{font:10px var(--mono);font-style:normal;color:var(--gold);border:1px solid rgba(242,184,75,.35);padding:3px 6px;border-radius:999px}
-.progress{display:grid;gap:8px}
-.step{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:10px;border:2px solid #cfc4b1;background:#fffaf0;border-radius:6px}
-.dot{width:12px;height:12px;border:2px solid var(--faint);background:#fff}
-.step.on .dot{border-color:var(--gold);background:var(--gold);box-shadow:0 0 18px rgba(242,184,75,.35)}
-.step.done .dot{border-color:var(--green);background:var(--green)}
-.step span{font-size:13px}
-.step em{font:10px var(--mono);font-style:normal;color:var(--faint)}
-.hero{display:grid;grid-template-columns:240px 1fr;gap:18px;border:3px solid var(--line);background:#fffaf0;border-radius:6px;padding:18px;margin-bottom:16px;box-shadow:6px 6px 0 rgba(0,0,0,.22)}
-.stamp{align-self:start;border:4px solid var(--faint);color:var(--faint);border-radius:6px;padding:20px 10px;text-align:center;font:900 28px var(--mono);background:#fff}
-.stamp.bullish{border-color:var(--red);color:var(--red);background:rgba(255,111,111,.08)}
-.stamp.bearish{border-color:var(--blue);color:var(--blue);background:rgba(104,167,255,.08)}
-.stamp.neutral{border-color:var(--gold);color:var(--gold);background:rgba(242,184,75,.08)}
-.hero h1{font-size:24px;margin:0 0 8px}
-.hero p{margin:0;color:#2f3946;line-height:1.6;font-size:14px}
-.metrics{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.chip{font:11px var(--mono);border:2px solid #d0c4b0;background:#fff;color:#45505d;padding:6px 8px;border-radius:999px}
-.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.secondary{border:2px solid var(--line);background:#fff;color:#111;border-radius:6px;padding:8px 10px;font-size:12px;font-weight:900;box-shadow:3px 3px 0 rgba(0,0,0,.18)}
-.secondary:hover{border-color:var(--gold)}
-.secondary:disabled{opacity:.45;cursor:default}
-.artifact-path{margin-top:10px;color:var(--muted);font:11px/1.45 var(--mono);word-break:break-all}
-.proof-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
-.proof{border:3px solid var(--line);background:#1a2634;color:#f7edd6;border-radius:6px;padding:12px;box-shadow:4px 4px 0 rgba(0,0,0,.2)}
-.proof b{display:block;font-size:12px;margin-bottom:4px;color:#ffc247}
-.proof span{display:block;font-size:13px;line-height:1.45}
-.section{margin-bottom:16px}
-.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
-.section h2{font-size:15px;margin:0}
-.section small{color:var(--faint);font:11px var(--mono)}
-.chain{display:grid;gap:10px}
-.chain-row{display:grid;grid-template-columns:150px 1fr;gap:12px;border:2px solid #cfc4b1;background:#fffaf0;border-radius:6px;padding:12px}
-.chain-row.done{border-left:4px solid var(--green)}
-.chain-row.on{border-left:4px solid var(--gold)}
-.chain-row strong{font-size:13px}
-.chain-row em{display:block;margin-top:4px;color:var(--faint);font:11px var(--mono);font-style:normal}
-.chain-row p{margin:0;color:#303946;font-size:13px;line-height:1.55}
-.agent-grid{display:grid;grid-template-columns:1fr;gap:8px}
-.agent-card{border:2px solid #cfc4b1;background:#fffaf0;border-radius:6px;padding:0;min-height:0}
-.agent-card.done{border-left:4px solid var(--green)}
-.agent-card.on{border-left:4px solid var(--gold)}
-.agent-card button{width:100%;display:grid;grid-template-columns:180px 1fr auto;gap:10px;align-items:start;border:0;background:transparent;color:inherit;text-align:left;padding:12px}
-.agent-card h3{font-size:14px;margin:0}
-.agent-card p{margin:0;color:#303946;font-size:13px;line-height:1.45}
-.agent-card .open{font:11px var(--mono);color:var(--gold);white-space:nowrap}
-.agent-card ul{margin:6px 0 0;padding-left:18px;color:#303946;font-size:12px;line-height:1.5}
-.agent-card li{margin:4px 0}
-.conflict{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.conflict-card{border:2px solid #cfc4b1;background:#fffaf0;border-radius:6px;padding:12px}
-.conflict-card.bull{border-left:4px solid var(--red)}
-.conflict-card.bear{border-left:4px solid var(--blue)}
-.conflict-card h3{font-size:14px;margin:0 0 7px}
-.conflict-card p{margin:0;color:#303946;font-size:13px;line-height:1.55}
-.detail-card{border:3px solid var(--line);background:#fffaf0;border-radius:6px;padding:13px;margin-bottom:12px;box-shadow:4px 4px 0 rgba(0,0,0,.18)}
-.detail-card h3{margin:0 0 8px;font-size:15px}
-.detail{max-height:520px;overflow:auto;color:#1f2933;font-size:13px;line-height:1.6;word-break:keep-all}
-.detail ul{padding-left:18px;margin:8px 0}.detail li{margin:4px 0}
-.summary-box{border:2px solid #d0c4b0;background:#fff;border-radius:6px;padding:10px;margin-bottom:12px}
-.summary-box h4,.md h4{margin:0 0 8px;font-size:13px}
-.summary-box ul{margin:0;padding-left:18px}
-.visual-digest{border:3px solid var(--line);background:#101820;color:#fff;border-radius:6px;padding:12px;margin-bottom:12px;box-shadow:4px 4px 0 rgba(0,0,0,.18)}
-.visual-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-.visual-head h4{margin:0;color:#ffc247;font-size:13px}
-.signal-pill{border:2px solid #fff;border-radius:999px;padding:5px 9px;font:900 12px var(--mono);background:#fff;color:#101820}
-.signal-pill.buy,.signal-pill.overweight{background:#ffe3e3;color:#a32020;border-color:#ff7777}
-.signal-pill.sell,.signal-pill.underweight{background:#e0ecff;color:#184f94;border-color:#75a8ff}
-.signal-pill.hold{background:#fff2c7;color:#806000;border-color:#ffd35f}
-.stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
-.stat-card{border:1px solid #35485f;background:#172532;border-radius:6px;padding:9px;min-height:68px}
-.stat-card b{display:block;color:#9fb1c8;font:10px var(--mono);letter-spacing:.8px;text-transform:uppercase}
-.stat-card strong{display:block;margin-top:4px;color:#fff;font-size:17px;line-height:1.2}
-.stat-card span{display:block;margin-top:3px;color:#b9c3d2;font-size:11px}
-.level-map{border:1px solid #35485f;background:#0c131b;border-radius:6px;padding:10px;margin-top:8px}
-.level-map h5{margin:0 0 18px;color:#b9c3d2;font-size:11px}
-.level-track{position:relative;height:46px;border-top:3px solid #cbd5e1;margin:0 6px 4px}
-.level-point{position:absolute;top:-10px;transform:translateX(-50%);display:grid;justify-items:center;gap:3px;min-width:56px}
-.level-point i{width:16px;height:16px;border:3px solid #101820;border-radius:50%;background:#ffc247;box-shadow:0 0 0 2px #fff}
-.level-point.current i{background:#4dd28a}.level-point.stop i{background:#ff6f6f}.level-point.target i{background:#68a7ff}
-.level-point span{font:10px var(--mono);color:#fff;white-space:nowrap}
-.level-point em{font:10px var(--mono);font-style:normal;color:#b9c3d2;white-space:nowrap}
-.meter-row{display:grid;gap:6px;margin-top:10px}
-.meter-line{display:grid;grid-template-columns:72px 1fr 54px;gap:8px;align-items:center;font-size:11px;color:#cbd5e1}
-.meter-bar{height:8px;background:#263649;border-radius:999px;overflow:hidden}
-.meter-fill{height:100%;background:#ffc247}
-.md{display:grid;gap:10px}
-.md h2,.md h3{margin:14px 0 4px;padding-bottom:5px;border-bottom:2px solid #dfd4c2;font-size:15px}
-.md h4{margin-top:10px;color:#243144}
-.md p{margin:0;color:#25303d}
-.md strong{font-weight:900;color:#101820}
-.md code{font-family:var(--mono);background:#f1eadc;border:1px solid #d8cdbd;border-radius:4px;padding:1px 4px}
-.md ul,.md ol{margin:0;padding-left:20px}
-.md li{margin:4px 0}
-.md table{width:100%;border-collapse:collapse;background:#fff;font-size:12px;display:block;overflow:auto}
-.md th,.md td{border:1px solid #cfc4b1;padding:7px;vertical-align:top;text-align:left}
-.md th{background:#efe4cf;font-weight:900}
-.md .proposal{display:inline-block;border:3px solid var(--line);background:#ffc247;color:#111;border-radius:6px;padding:8px 10px;font:900 16px var(--mono);box-shadow:3px 3px 0 rgba(0,0,0,.18)}
-.md hr{border:0;border-top:2px solid #dfd4c2;margin:4px 0}
-.report-box{border:3px solid var(--line);background:#101820;color:#fff;border-radius:6px;padding:14px;margin-bottom:14px;box-shadow:4px 4px 0 rgba(0,0,0,.18)}
-.report-box h3{margin:0 0 8px;font-size:15px;color:#ffc247}
-.report-box p{margin:0 0 10px;color:#cbd5e1;font-size:13px;line-height:1.55}
-.report-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.report-actions .secondary{background:#ffc247;color:#111}
-.log{height:170px;overflow:auto;border:2px solid #cfc4b1;background:#fffaf0;padding:10px;border-radius:6px;font:11px/1.65 var(--mono);color:#5d6672}
-.log div{margin-bottom:3px}.log b{color:var(--gold);font-weight:600}
-@media(max-width:1200px){.shell{grid-template-columns:280px 1fr}.right{grid-column:1/-1;border-left:0;border-top:3px solid var(--line)}}
-@media(max-width:820px){.topbar{grid-template-columns:1fr}.search{grid-template-columns:1fr}.suggest{right:0}.shell{display:block}.hero,.chain-row,.conflict,.proof-strip{grid-template-columns:1fr}.left,.right,.main{border:0;padding:14px}.agent-card button{grid-template-columns:1fr}.hero{grid-template-columns:1fr}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--ink);color:var(--text);font-family:var(--sans);min-height:100vh}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+header{display:flex;align-items:center;gap:16px;padding:18px 26px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-weight:900;font-size:19px;letter-spacing:-.5px}
+.brand em{font-style:normal;color:var(--amber)}
+.brand small{display:block;font-weight:400;font-size:11px;color:var(--faint);letter-spacing:2px;margin-top:2px}
+.ctrl{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tick-in{background:var(--panel);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:14px;padding:9px 13px;border-radius:6px;width:150px}
+.tick-in:focus{outline:2px solid var(--amber);outline-offset:1px}
+button.run{background:var(--amber);border:none;color:#14100A;font-weight:700;font-size:14px;padding:10px 20px;border-radius:6px;cursor:pointer}
+button.run:disabled{opacity:.4;cursor:default}
+.conn{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.searchbox{position:relative}
+.sugg{position:absolute;top:calc(100% + 6px);left:0;min-width:280px;background:var(--panel);border:1px solid var(--line);border-radius:8px;z-index:50;max-height:320px;overflow-y:auto;display:none}
+.sugg.open{display:block}
+.sugg button{display:flex;width:100%;gap:10px;align-items:baseline;background:none;border:none;color:var(--text);font-family:var(--sans);font-size:13px;padding:9px 13px;cursor:pointer;text-align:left}
+.sugg button:hover,.sugg button.hot{background:var(--amber-dim)}
+.sugg .code{font-family:var(--mono);font-size:11px;color:var(--dim);min-width:64px}
+.sugg .mkt{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--faint)}
+.dl{display:inline-block;margin-top:10px;font-size:12px;color:var(--amber);text-decoration:none;border:1px solid var(--amber);border-radius:6px;padding:6px 12px}
+.dl:hover{background:var(--amber-dim)}
+.conn.live{color:var(--amber)}
+.wrap{display:grid;grid-template-columns:1fr 380px;min-height:calc(100vh - 78px)}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+main{padding:24px 26px;border-right:1px solid var(--line)}
+aside{padding:24px 22px;background:var(--panel2)}
+.stage{margin-bottom:26px}
+.stage-h{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.stage-h .no{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:1px}
+.stage-h h2{font-size:14px;font-weight:700}
+.stage-h .st{margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--faint)}
+.stage-h .st.on{color:var(--amber)} .stage-h .st.done{color:var(--dim)}
+.rail{width:2px;height:18px;background:var(--line);margin:0 0 8px 11px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:13px 14px;position:relative;transition:border-color .3s}
+.card.active{border-color:var(--amber)}
+.card.active::after{content:"";position:absolute;inset:-1px;border-radius:9px;border:1px solid var(--amber);animation:pulse 1.4s ease-out infinite;pointer-events:none}
+@keyframes pulse{from{opacity:.8;transform:scale(1)}to{opacity:0;transform:scale(1.035)}}
+.card .who{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.avatar{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font-size:15px;background:var(--amber-dim);flex:none}
+.card .nm{font-weight:700;font-size:13px}
+.card .rl{font-size:11px;color:var(--dim)}
+.card .out{font-size:12px;line-height:1.55;color:var(--dim);min-height:52px;max-height:130px;overflow-y:auto;word-break:keep-all;white-space:pre-wrap}
+.card.done .out{color:var(--text)}
+.card .badge{position:absolute;top:11px;right:12px;font-family:var(--mono);font-size:10px;color:var(--faint)}
+.card.active .badge{color:var(--amber)} .card.done .badge{color:var(--dim)}
+.arena{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:16px}
+.arena.active{border-color:var(--amber)}
+.duel{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:12px}
+.duel .bull{color:var(--up)} .duel .bear{color:var(--down)}
+.chat{display:flex;flex-direction:column;gap:8px;min-height:40px;max-height:340px;overflow-y:auto}
+.msg{max-width:82%;padding:9px 12px;border-radius:9px;font-size:12.5px;line-height:1.55;word-break:keep-all;white-space:pre-wrap;opacity:0;transform:translateY(6px);animation:in .35s forwards}
+@keyframes in{to{opacity:1;transform:none}}
+.msg.bull{align-self:flex-start;background:var(--up-dim);border:1px solid rgba(232,69,60,.3)}
+.msg.bear{align-self:flex-end;background:var(--down-dim);border:1px solid rgba(61,123,232,.3)}
+.msg.judge{align-self:center;background:var(--amber-dim);border:1px solid rgba(255,176,0,.35);max-width:94%}
+.msg b{display:block;font-family:var(--mono);font-size:10px;margin-bottom:3px;opacity:.75}
+.verdict{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.stamp{font-family:var(--mono);font-weight:600;font-size:26px;letter-spacing:2px;border:3px solid var(--faint);color:var(--faint);border-radius:8px;padding:10px 20px;transform:rotate(-3deg)}
+.stamp.bullish{border-color:var(--up);color:var(--up);background:var(--up-dim)}
+.stamp.bearish{border-color:var(--down);color:var(--down);background:var(--down-dim)}
+.stamp.neutral{border-color:var(--hold);color:var(--hold)}
+.verdict .why{flex:1;min-width:220px;font-size:13px;line-height:1.65;color:var(--dim);word-break:keep-all;white-space:pre-wrap;max-height:260px;overflow-y:auto}
+aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);margin-bottom:12px}
+.log{font-family:var(--mono);font-size:11.5px;line-height:1.8;color:var(--dim);height:calc(100vh - 250px);min-height:300px;overflow-y:auto;word-break:break-all}
+.log div{opacity:0;animation:in .3s forwards}
+.log .t{color:var(--faint);margin-right:8px}
+.log .ok{color:var(--amber)}
+.log .err{color:var(--up)}
+.meter{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:flex;gap:18px;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.meter b{display:block;color:var(--text);font-size:15px;margin-top:2px}
 </style>
 </head>
 <body>
-<div class="app">
-  <header class="topbar">
-    <div class="brand">TRADINGAGENTS <span>WAR ROOM</span><span class="build-mark">V3 DOSSIER</span><small>DECISION TRACE DASHBOARD · CANONICAL REPORT OUTPUT</small></div>
-    <div class="search">
-      <input id="ticker" value="005930.KS" autocomplete="off" aria-label="종목 코드 또는 회사명" placeholder="종목명, 코드, 글로벌 티커 검색">
-      <button class="run" id="go">분석 시작</button>
-      <div class="suggest" id="suggest"></div>
+<header>
+  <div class="brand">AGENT <em>DESK</em><small>LIVE · TRADINGAGENTS PIPELINE</small></div>
+  <div class="ctrl">
+    <div class="searchbox">
+      <input class="tick-in" id="ticker" value="" placeholder="종목명·코드·티커" aria-label="종목 검색" autocomplete="off" style="width:220px">
+      <div class="sugg" id="sugg" role="listbox"></div>
     </div>
-    <div class="status" id="conn">대기</div>
-  </header>
-
-  <div class="shell">
-    <aside class="left">
-      <p class="label">Selected Instrument</p>
-      <div class="selected-symbol"><strong id="selectedCode">005930.KS</strong><span id="selectedName">종목명이나 티커를 검색해 선택</span></div>
-      <div class="picker-help">검색창에서 한국 종목명, KRX 코드, 글로벌 티커를 바로 찾습니다. 아래 목록은 빠른 시작용 워치리스트입니다.</div>
-      <p class="label">Watchlist</p>
-      <div class="watchlist" id="watchlist"></div>
-      <p class="label">Pipeline</p>
-      <div class="progress">
-        <div class="step" data-step="analysts"><div class="dot"></div><span>애널리스트 4팀</span><em>WAIT</em></div>
-        <div class="step" data-step="debate"><div class="dot"></div><span>Bull/Bear 토론</span><em>WAIT</em></div>
-        <div class="step" data-step="risk"><div class="dot"></div><span>트레이더·리스크</span><em>WAIT</em></div>
-        <div class="step" data-step="final"><div class="dot"></div><span>최종 PM 결정</span><em>WAIT</em></div>
-      </div>
-    </aside>
-
-    <main class="main">
-      <section class="hero">
-        <div class="stamp" id="stamp">···</div>
-        <div>
-          <h1 id="briefTitle">분석 전</h1>
-          <p id="briefSummary">종목을 선택하고 분석을 시작하면 최종 판단, 핵심 근거, 상충 의견, 실행 조건이 한 흐름으로 정리됩니다.</p>
-          <div class="metrics"><span class="chip" id="mEv">0 events</span><span class="chip" id="mTime">0.0s</span><span class="chip" id="mRep">0/4 reports</span></div>
-          <div class="actions">
-            <button class="secondary" id="downloadReport" disabled>Markdown 다운로드</button>
-            <button class="secondary" id="printReport" disabled>인쇄/PDF</button>
-          </div>
-          <div class="artifact-path" id="artifactPath">분석 완료 후 저장된 리포트 위치가 표시됩니다.</div>
-        </div>
-      </section>
-
-      <section class="proof-strip" aria-label="dashboard changes">
-        <div class="proof"><b>01 · 결론 먼저</b><span>최종 등급, 방향성, 실행 조건을 상단 한 장에 고정합니다.</span></div>
-        <div class="proof"><b>02 · 근거 장부</b><span>각 에이전트의 핵심 문장과 원문을 따로 열람합니다.</span></div>
-        <div class="proof"><b>03 · 출력 가능</b><span>화면 요약이 아니라 저장된 complete_report.md를 다운로드/인쇄합니다.</span></div>
-      </section>
-
-      <section class="section">
-        <div class="section-head"><h2>Decision Chain</h2><small>결론이 만들어진 순서</small></div>
-        <div class="chain" id="chain"></div>
-      </section>
-
-      <section class="section">
-        <div class="section-head"><h2>Agent Evidence</h2><small>각 에이전트의 핵심 근거</small></div>
-        <div class="agent-grid" id="agentGrid"></div>
-      </section>
-
-      <section class="section">
-        <div class="section-head"><h2>Bull / Bear Tension</h2><small>서로 충돌한 논리</small></div>
-        <div class="conflict">
-          <article class="conflict-card bull"><h3>BULL · 매수 논거</h3><p id="bullText">토론 전입니다.</p></article>
-          <article class="conflict-card bear"><h3>BEAR · 매도 논거</h3><p id="bearText">토론 전입니다.</p></article>
-        </div>
-      </section>
-    </main>
-
-    <aside class="right">
-      <section class="report-box">
-        <h3>Report Output</h3>
-        <p id="reportState">분석이 끝나면 백엔드가 저장한 원문 리포트를 여기서 바로 받을 수 있습니다.</p>
-        <div class="report-actions">
-          <button class="secondary" id="downloadReportSide" disabled>MD 받기</button>
-          <button class="secondary" id="printReportSide" disabled>PDF 인쇄</button>
-        </div>
-      </section>
-      <p class="label">Selected Agent</p>
-      <section class="detail-card">
-        <h3 id="detailTitle">상세 보기</h3>
-        <div class="detail" id="detail">에이전트 카드를 선택하면 요약 근거와 원문을 확인할 수 있습니다.</div>
-      </section>
-      <p class="label">Live Log</p>
-      <div class="log" id="log"><div><b>--:--:--</b> 종목 입력 후 분석을 시작하세요.</div></div>
-    </aside>
+    <button class="run" id="go">분석 시작</button>
+    <span class="conn" id="conn">대기</span>
   </div>
+</header>
+
+<div class="wrap">
+<main>
+  <section class="stage" id="s-analysts">
+    <div class="stage-h"><span class="no">STAGE 1</span><h2>애널리스트팀 (병렬)</h2><span class="st">대기</span></div>
+    <div class="cards">
+      <div class="card" data-agent="market"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">📈</div><div><div class="nm">마켓</div><div class="rl">기술적 분석</div></div></div>
+        <div class="out">시세·지표 대기</div></div>
+      <div class="card" data-agent="sentiment"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">💬</div><div><div class="nm">센티먼트</div><div class="rl">여론·수급 심리</div></div></div>
+        <div class="out">뉴스·소셜 감성 대기</div></div>
+      <div class="card" data-agent="news"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">🌐</div><div><div class="nm">뉴스</div><div class="rl">국내외 뉴스·공시·매크로</div></div></div>
+        <div class="out">네이버·DART·FRED 대기</div></div>
+      <div class="card" data-agent="fundamentals"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">🧾</div><div><div class="nm">펀더멘털</div><div class="rl">재무제표 분석</div></div></div>
+        <div class="out">재무 데이터 대기</div></div>
+    </div>
+  </section>
+  <div class="rail"></div>
+
+  <section class="stage" id="s-debate">
+    <div class="stage-h"><span class="no">STAGE 2</span><h2>리서치팀 토론</h2><span class="st">대기</span></div>
+    <div class="arena" id="arena">
+      <div class="duel"><span class="bull">▲ BULL</span><span class="bear">▼ BEAR</span></div>
+      <div class="chat" id="chat"><div style="color:var(--faint);font-size:12px">보고서 4건 수신 후 토론이 시작됩니다.</div></div>
+    </div>
+  </section>
+  <div class="rail"></div>
+
+  <section class="stage" id="s-risk">
+    <div class="stage-h"><span class="no">STAGE 3</span><h2>트레이더 & 리스크 위원회</h2><span class="st">대기</span></div>
+    <div class="cards">
+      <div class="card" data-agent="trader"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">🎯</div><div><div class="nm">트레이더</div><div class="rl">실행 계획</div></div></div>
+        <div class="out">투자 계획 대기</div></div>
+      <div class="card" data-agent="aggressive"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">🔥</div><div><div class="nm">공격</div><div class="rl">기회 극대화</div></div></div>
+        <div class="out"></div></div>
+      <div class="card" data-agent="neutral"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">⚖️</div><div><div class="nm">중립</div><div class="rl">균형 판단</div></div></div>
+        <div class="out"></div></div>
+      <div class="card" data-agent="conservative"><span class="badge">대기</span>
+        <div class="who"><div class="avatar">🛡️</div><div><div class="nm">보수</div><div class="rl">손실 방어</div></div></div>
+        <div class="out"></div></div>
+    </div>
+  </section>
+  <div class="rail"></div>
+
+  <section class="stage" id="s-final">
+    <div class="stage-h"><span class="no">STAGE 4</span><h2>포트폴리오 매니저 — 최종 결정</h2><span class="st">대기</span></div>
+    <div class="verdict">
+      <div class="stamp" id="stamp">···</div>
+      <div class="why" id="why">파이프라인 완료 시 최종 등급과 근거가 표시됩니다.</div>
+    </div>
+  </section>
+</main>
+
+<aside>
+  <h3>LIVE LOG</h3>
+  <div class="log" id="log"><div><span class="t">--:--:--</span>종목 입력 후 분석을 시작하세요.</div></div>
+  <div class="meter">
+    <div>이벤트<b id="mEv">0</b></div>
+    <div>경과<b id="mTime">0.0s</b></div>
+    <div>보고서<b id="mRep">0/4</b></div>
+  </div>
+</aside>
 </div>
 
 <script>
-const $ = selector => document.querySelector(selector);
-const $$ = selector => [...document.querySelectorAll(selector)];
-const AGENTS = {
-  market:["마켓","기술적 분석"], news:["뉴스","뉴스·공시"], sentiment:["센티먼트","심리·수급"],
-  fundamentals:["펀더멘털","재무·밸류"], trader:["트레이더","실행 계획"],
-  aggressive:["공격 리스크","상방 기회"], neutral:["중립 리스크","균형 판단"], conservative:["보수 리스크","손실 방어"],
-  bull:["BULL","매수 논거"], bear:["BEAR","매도 논거"], judge:["리서치 매니저","토론 판정"], final:["PM","최종 판단"]
-};
-const QUICK = [
-  ["005930.KS","삼성전자","KR"],["000660.KS","SK하이닉스","KR"],["NVDA","NVIDIA","US"],
-  ["AAPL","Apple","US"],["TSM","Taiwan Semi","ADR"],["7203.T","Toyota","JP"],
-  ["0700.HK","Tencent","HK"],["BTC-USD","Bitcoin","Crypto"],["GC=F","Gold Futures","Futures"]
-];
-const AGENT_ORDER = ["market","news","sentiment","fundamentals","bull","bear","judge","trader","aggressive","neutral","conservative","final"];
-let es = null, timer = null, t0 = 0, evCount = 0, repCount = 0, selectedTicker = "005930.KS";
-let noteStore = {};
-let finalSignal = null;
-let artifactPath = "";
-let artifactDownloadUrl = "";
-let artifactTextUrl = "";
+const $=s=>document.querySelector(s);
+let es=null, evCount=0, repCount=0, t0=0, timer=null;
 
-function init(){
-  renderWatchlist();
-  renderChain();
-  renderAgents();
-  wireSearch();
-  $("#go").addEventListener("click", run);
-  $("#downloadReport").addEventListener("click", downloadReport);
-  $("#printReport").addEventListener("click", printReport);
-  $("#downloadReportSide").addEventListener("click", downloadReport);
-  $("#printReportSide").addEventListener("click", printReport);
+function log(msg, cls){
+  const d=document.createElement('div');
+  const t=new Date().toLocaleTimeString('ko-KR',{hour12:false});
+  d.innerHTML=`<span class="t">${t}</span><span class="${cls||''}">${msg}</span>`;
+  const box=$('#log'); box.appendChild(d); box.scrollTop=box.scrollHeight;
 }
-
-function renderWatchlist(){
-  $("#watchlist").innerHTML = QUICK.map(([symbol,name,market]) => `
-    <button class="watch" data-symbol="${escapeHtml(symbol)}" data-name="${escapeHtml(name)}">
-      <span><strong>${escapeHtml(symbol)}</strong><span>${escapeHtml(name)}</span></span><em>${escapeHtml(market)}</em>
-    </button>`).join("");
-  $$("#watchlist .watch").forEach(btn => btn.addEventListener("click", () => chooseSymbol(btn.dataset.symbol, btn.dataset.name)));
+function stage(id, txt, cls){const st=$(id+' .st'); st.textContent=txt; st.className='st '+(cls||'');}
+function card(agent){return document.querySelector(`[data-agent="${agent}"]`);}
+function cardState(agent, state, badge){
+  const c=card(agent); if(!c) return;
+  c.classList.remove('active','done'); if(state) c.classList.add(state);
+  c.querySelector('.badge').textContent=badge;
 }
-
-function renderChain(){
-  const rows = [
-    ["analysts","애널리스트 수집","마켓, 뉴스, 심리, 펀더멘털이 각각 독립적으로 근거를 정리합니다."],
-    ["debate","상충 의견 검토","Bull/Bear가 같은 근거를 반대 방향에서 검증합니다."],
-    ["risk","실행 가능성 점검","트레이더와 리스크 위원회가 진입 조건과 방어선을 점검합니다."],
-    ["final","최종 판단","PM이 근거와 리스크를 묶어 최종 등급을 냅니다."]
-  ];
-  $("#chain").innerHTML = rows.map(([id,title,body]) => `
-    <article class="chain-row" data-chain="${id}">
-      <div><strong>${title}</strong><em>WAIT</em></div>
-      <p>${escapeHtml(body)}</p>
-    </article>`).join("");
+function cardOut(agent, text){
+  const c=card(agent); if(!c) return;
+  c.querySelector('.out').textContent=text.length>600 ? text.slice(0,600)+' …' : text;
 }
-
-function renderAgents(){
-  $("#agentGrid").innerHTML = AGENT_ORDER.map(id => agentCard(id)).join("");
-  $$("#agentGrid .agent-card").forEach(el => el.addEventListener("click", () => showDetail(el.dataset.note)));
+function bubble(speaker, content){
+  const label={bull:'BULL', bear:'BEAR', judge:'RESEARCH MANAGER'}[speaker]||speaker.toUpperCase();
+  const m=document.createElement('div'); m.className='msg '+(speaker==='judge'?'judge':speaker);
+  m.innerHTML=`<b>${label}</b>`;
+  const span=document.createElement('span');
+  span.textContent=content.length>900 ? content.slice(0,900)+' …' : content;
+  m.appendChild(span);
+  const chat=$('#chat'); chat.appendChild(m); chat.scrollTop=chat.scrollHeight;
 }
-
-function agentCard(id){
-  const meta = AGENTS[id] || [id.toUpperCase(),"Agent"];
-  const note = noteStore[id];
-  const cls = note ? "done" : "";
-  const headline = note?.headline || "대기 중";
-  const bullets = (note?.bullets || []).slice(0,5).map(v => `<li>${escapeHtml(v)}</li>`).join("");
-  return `<article class="agent-card ${cls}" data-note="${id}">
-    <button>
-      <h3>${meta[0]} · ${meta[1]}</h3>
-      <div><p>${escapeHtml(headline)}</p>${bullets ? `<ul>${bullets}</ul>` : ""}</div>
-      <span class="open">${note ? "원문 보기" : "대기"}</span>
-    </button>
-  </article>`;
-}
-
-function showDetail(id){
-  const meta = AGENTS[id] || [id.toUpperCase(),"Agent"];
-  const note = noteStore[id];
-  $("#detailTitle").textContent = `${meta[0]} 상세`;
-  if(!note){
-    $("#detail").textContent = "아직 수신된 내용이 없습니다.";
-    return;
-  }
-  const bullets = uniqueList(note.bullets || []).slice(0,6).map(v => `<li>${escapeHtml(v)}</li>`).join("");
-  $("#detail").innerHTML = `
-    ${buildVisualDigest(note.content || note.summary || "", id)}
-    ${bullets ? `<section class="summary-box"><h4>핵심 요약</h4><ul>${bullets}</ul></section>` : ""}
-    <section class="md">${renderMarkdown(note.content || note.summary || "")}</section>`;
-}
-
-function wireSearch(){
-  const input = $("#ticker");
-  let requestId = 0;
-  input.addEventListener("input", async () => {
-    selectedTicker = input.value.trim();
-    updateSelected(selectedTicker);
-    const q = input.value.trim();
-    if(!q){ $("#suggest").classList.remove("on"); return; }
-    const id = ++requestId;
-    try{
-      const res = await fetch(`/api/symbols?q=${encodeURIComponent(q)}&limit=12`);
-      const data = await res.json();
-      if(id !== requestId) return;
-      renderSuggest(data.symbols || []);
-    }catch{ renderSuggest([]); }
-  });
-  input.addEventListener("keydown", e => {
-    const first = $("#suggest .pick");
-    if(e.key === "Enter" && first && $("#suggest").classList.contains("on")){
-      e.preventDefault();
-      chooseSymbol(first.dataset.symbol, first.dataset.name);
-    }
-  });
-  document.addEventListener("click", e => {
-    if(!e.target.closest(".search")) $("#suggest").classList.remove("on");
-  });
-}
-
-function renderSuggest(items){
-  const box = $("#suggest");
-  if(!items.length){ box.classList.remove("on"); return; }
-  box.innerHTML = items.map(item => `
-    <button class="pick" data-symbol="${escapeHtml(item.symbol)}" data-name="${escapeHtml(item.name)}">
-      <code>${escapeHtml(item.symbol)}</code><span>${escapeHtml(item.name)}</span><b>${escapeHtml(item.market)}</b>
-    </button>`).join("");
-  $$("#suggest .pick").forEach(btn => btn.addEventListener("click", () => chooseSymbol(btn.dataset.symbol, btn.dataset.name)));
-  box.classList.add("on");
-}
-
-function chooseSymbol(symbol, name=""){
-  $("#ticker").value = symbol;
-  selectedTicker = symbol;
-  updateSelected(symbol, name);
-  $("#suggest").classList.remove("on");
-}
-
-function updateSelected(symbol, name=""){
-  $("#selectedCode").textContent = symbol || "-";
-  $("#selectedName").textContent = name || "검색 또는 직접 입력";
-  $$("#watchlist .watch").forEach(btn => btn.classList.toggle("active", btn.dataset.symbol === symbol));
-}
+const RISK_AGENTS=['aggressive','neutral','conservative'];
 
 function reset(){
-  stopStream(false);
-  evCount = 0; repCount = 0; noteStore = {}; finalSignal = null; artifactPath = ""; artifactDownloadUrl = ""; artifactTextUrl = "";
-  $("#mEv").textContent = "0 events"; $("#mRep").textContent = "0/4 reports"; $("#mTime").textContent = "0.0s";
-  $("#stamp").textContent = "···"; $("#stamp").className = "stamp";
-  $("#briefTitle").textContent = `${selectedTicker} 분석 중`;
-  $("#briefSummary").textContent = "각 에이전트가 독립적으로 근거를 수집하고 있습니다.";
-  $("#downloadReport").disabled = true; $("#printReport").disabled = true;
-  $("#downloadReportSide").disabled = true; $("#printReportSide").disabled = true;
-  $("#artifactPath").textContent = "분석 완료 후 저장된 리포트 위치가 표시됩니다.";
-  $("#reportState").textContent = "분석 중입니다. 완료되면 complete_report.md 원문 다운로드와 PDF 인쇄가 활성화됩니다.";
-  $("#log").innerHTML = "";
-  $("#bullText").textContent = "토론 전입니다.";
-  $("#bearText").textContent = "토론 전입니다.";
-  renderChain();
-  renderAgents();
-  setStep("analysts","on"); setStep("debate",""); setStep("risk",""); setStep("final","");
-  setChain("analysts","on","애널리스트들이 차트, 뉴스, 심리, 펀더멘털 근거를 수집 중입니다.");
-}
-
-function run(){
-  const ticker = $("#ticker").value.trim();
-  if(!ticker) return;
-  selectedTicker = ticker;
-  updateSelected(ticker, $("#selectedName").textContent);
-  reset();
-  $("#go").disabled = true; $("#go").textContent = "실행 중";
-  $("#conn").textContent = "LIVE"; $("#conn").classList.add("live");
-  t0 = Date.now();
-  timer = setInterval(() => $("#mTime").textContent = `${((Date.now()-t0)/1000).toFixed(1)}s`, 200);
-  es = new EventSource(`/api/stream?ticker=${encodeURIComponent(ticker)}`);
-  es.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err){ log(`파싱 오류 ${err}`, true); } };
-  es.onerror = () => { log("스트림 연결 종료", true); stopStream(); };
+  evCount=0; repCount=0;
+  $('#mEv').textContent='0'; $('#mRep').textContent='0/4'; $('#mTime').textContent='0.0s';
+  $('#chat').innerHTML=''; $('#log').innerHTML='';
+  $('#stamp').textContent='···'; $('#stamp').className='stamp';
+  $('#why').textContent='파이프라인 완료 시 최종 등급과 근거가 표시됩니다.';
+  ['market','sentiment','news','fundamentals','trader',...RISK_AGENTS].forEach(a=>{cardState(a,null,'대기');});
+  ['#s-analysts','#s-debate','#s-risk','#s-final'].forEach(s=>stage(s,'대기'));
+  $('#arena').classList.remove('active');
 }
 
 function handle(ev){
-  evCount++; $("#mEv").textContent = `${evCount} events`;
-  if(ev.type === "stage"){
-    if(ev.stage === "start") log(`${ev.ticker} · ${ev.date} 파이프라인 시작`);
-    if(ev.stage === "done"){ log("파이프라인 완료"); stopStream(); }
-    return;
-  }
-  if(ev.type === "report"){
-    repCount++; $("#mRep").textContent = `${repCount}/4 reports`;
-    saveNote(ev.agent, ev);
-    log(`${label(ev.agent)} 보고서 수신`);
-    if(repCount >= 4){
-      setStep("analysts","done"); setStep("debate","on");
-      setChain("analysts","done","4개 애널리스트 보고서가 모였습니다. 아래 Agent Evidence에서 근거를 확인하세요.");
-      setChain("debate","on","Bull/Bear가 같은 자료를 두 방향에서 검증하고 있습니다.");
-    }
-    return;
-  }
-  if(ev.type === "debate"){
-    saveNote(ev.speaker, ev);
-    if(ev.speaker === "bull") $("#bullText").textContent = polished(ev.summary || ev.headline, 240);
-    if(ev.speaker === "bear") $("#bearText").textContent = polished(ev.summary || ev.headline, 240);
-    log(`${label(ev.speaker)} 토론 발언`);
-    if(ev.speaker === "judge"){
-      setStep("debate","done"); setStep("risk","on");
-      setChain("debate","done",polished(ev.summary || ev.headline, 220));
-      setChain("risk","on","트레이더와 리스크 위원회가 실행 조건을 검토하고 있습니다.");
-    }
-    return;
-  }
-  if(ev.type === "trader"){
-    saveNote("trader", ev);
-    setChain("risk","on",polished(ev.summary || ev.headline, 220));
-    log("트레이더 실행 계획 수신");
-    return;
-  }
-  if(ev.type === "risk"){
-    saveNote(ev.speaker, ev);
-    log(`${label(ev.speaker)} 리스크 의견`);
-    return;
-  }
-  if(ev.type === "telemetry"){
-    const parts = Object.entries(ev.analysts || {}).map(([k,v]) => `${k} ${Number(v.seconds || 0).toFixed(1)}s`);
-    log(`실측 ${parts.join(" · ")}`);
-    return;
-  }
-  if(ev.type === "final"){
-    finalSignal = ev;
-    saveNote("final", ev);
-    setStep("risk","done"); setStep("final","done");
-    setChain("risk","done","실행 계획과 리스크 의견이 최종 판단에 반영되었습니다.");
-    setChain("final","done",polished(ev.summary || ev.headline, 240));
-    $("#stamp").textContent = ev.rating || "N/A"; $("#stamp").className = `stamp ${ev.bias || ""}`;
-    $("#briefTitle").textContent = `${selectedTicker} · ${ev.rating || "최종 판단"}`;
-    $("#briefSummary").textContent = polished(ev.summary || ev.headline || "최종 결정 수신", 320);
-    log(`최종 등급 ${ev.rating || "N/A"} · ${ev.action || "N/A"}`);
-    return;
-  }
-  if(ev.type === "artifact"){
-    artifactPath = ev.path || "";
-    artifactDownloadUrl = ev.download_url || "";
-    artifactTextUrl = ev.text_url || artifactDownloadUrl;
-    $("#artifactPath").textContent = artifactPath ? `저장된 원문 리포트: ${artifactPath}` : "원문 리포트 저장 완료";
-    $("#downloadReport").disabled = false;
-    $("#printReport").disabled = false;
-    $("#downloadReportSide").disabled = false;
-    $("#printReportSide").disabled = false;
-    $("#reportState").textContent = "저장된 complete_report.md 원문을 사용할 수 있습니다. 다운로드하거나 브라우저 인쇄에서 PDF로 저장하세요.";
-    log("원문 리포트 저장 완료");
-    return;
-  }
-  if(ev.type === "error"){
-    log(`오류 ${ev.message}`, true); stopStream();
+  evCount++; $('#mEv').textContent=evCount;
+  switch(ev.type){
+    case 'stage':
+      if(ev.stage==='start'){
+        log(`${ev.ticker} · ${ev.date} 파이프라인 시작`,'ok');
+        stage('#s-analysts','진행 중','on');
+        ['market','sentiment','news','fundamentals'].forEach(a=>cardState(a,'active','분석 중'));
+      } else if(ev.stage==='done'){
+        log(`완료 — 최종 시그널: ${ev.decision||''}`,'ok');
+        stopStream();
+      }
+      break;
+    case 'report':
+      cardState(ev.agent,'done','완료'); cardOut(ev.agent, ev.bullets ? '· '+ev.bullets.join('\n· ') : (ev.summary || ev.content));
+      repCount++; $('#mRep').textContent=`${repCount}/4`;
+      log(`${ev.agent} 보고서 수신 (${ev.content.length.toLocaleString()}자)`);
+      if(repCount>=4){stage('#s-analysts','완료','done'); stage('#s-debate','진행 중','on'); $('#arena').classList.add('active');}
+      break;
+    case 'telemetry': {
+      const parts=Object.entries(ev.analysts).map(([k,v])=>`${k} ${v.seconds.toFixed(1)}s/${v.tool_calls}콜`);
+      log('애널리스트 실측: '+parts.join(' · '),'ok');
+      break;}
+    case 'debate':
+      bubble(ev.speaker, ev.content);
+      if(ev.speaker==='judge'){
+        stage('#s-debate','완료','done'); $('#arena').classList.remove('active');
+        stage('#s-risk','진행 중','on'); cardState('trader','active','작성 중');
+      }
+      log(`토론: ${ev.speaker} 발언`);
+      break;
+    case 'trader':
+      cardState('trader','done','완료'); cardOut('trader', ev.summary || ev.content);
+      RISK_AGENTS.forEach(a=>cardState(a,'active','토론 중'));
+      log('트레이더 실행 계획 수신');
+      break;
+    case 'risk':
+      cardState(ev.speaker,'done','발언 완료'); cardOut(ev.speaker, ev.content);
+      log(`리스크: ${ev.speaker} 발언`);
+      break;
+    case 'final': {
+      stage('#s-risk','완료','done'); RISK_AGENTS.forEach(a=>{const c=card(a); if(!c.classList.contains('done')) cardState(a,'done','완료');});
+      stage('#s-final','완료','done');
+      const st=$('#stamp'); st.textContent=ev.rating; st.className='stamp '+ev.bias;
+      $('#why').textContent=ev.content;
+      log(`최종 등급: ${ev.rating} (${ev.action})`,'ok');
+      break;}
+    case 'artifact': {
+      const a=document.createElement('a');
+      a.className='dl'; a.href=ev.download_url; a.textContent='📄 통합 리포트 다운로드 (.md)';
+      $('#why').parentElement.appendChild(a);
+      log('통합 리포트 생성됨','ok');
+      break;}
+    case 'error':
+      log('오류: '+ev.message,'err'); stopStream();
+      break;
   }
 }
 
-function downloadReport(){
-  if(!artifactDownloadUrl) return;
-  const a = document.createElement("a");
-  a.href = artifactDownloadUrl;
-  a.download = `${selectedTicker.replace(/[^A-Za-z0-9._-]/g,"_")}_tradingagents_report.md`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+function stopStream(){
+  if(es){es.close(); es=null;}
+  if(timer){clearInterval(timer); timer=null;}
+  $('#conn').textContent='종료'; $('#conn').classList.remove('live');
+  $('#go').disabled=false; $('#go').textContent='다시 실행';
 }
 
-async function printReport(){
-  if(!artifactTextUrl) return;
-  const response = await fetch(artifactTextUrl);
-  const markdown = await response.text();
-  const win = window.open("", "_blank");
-  if(!win) return;
-  win.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${escapeHtml(selectedTicker)} Report</title><style>
-    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;margin:32px;color:#111827;line-height:1.58}
-    h1,h2,h3{break-after:avoid} table{width:100%;border-collapse:collapse;font-size:12px} th,td{border:1px solid #d1d5db;padding:7px;vertical-align:top;text-align:left} th{background:#f3f4f6}.proposal{display:inline-block;border:2px solid #111;padding:8px 10px;font-weight:800}
-  </style></head><body>${renderMarkdown(markdown)}</body></html>`);
-  win.document.close();
-  win.focus();
-  win.print();
+const suggBox=$('#sugg'); let suggTimer=null; let picked='';
+$('#ticker').addEventListener('input',e=>{
+  picked=''; clearTimeout(suggTimer);
+  const q=e.target.value.trim();
+  if(!q){suggBox.classList.remove('open'); return;}
+  suggTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch('/api/search?q='+encodeURIComponent(q));
+      const rows=(await r.json()).results||[];
+      suggBox.innerHTML='';
+      rows.forEach(row=>{
+        const b=document.createElement('button');
+        b.innerHTML=`<span class="code">${row.code}</span><span>${row.name}</span><span class="mkt">${row.market}</span>`;
+        b.addEventListener('click',()=>{
+          $('#ticker').value=`${row.name} (${row.code})`; picked=row.code;
+          suggBox.classList.remove('open');
+        });
+        suggBox.appendChild(b);
+      });
+      suggBox.classList.toggle('open', rows.length>0);
+    }catch(_){suggBox.classList.remove('open');}
+  },180);
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.searchbox')) suggBox.classList.remove('open');});
+
+async function resolveTicker(){
+  const raw=picked || $('#ticker').value.trim();
+  const codeMatch=raw.match(/\((\d{6})\)/);
+  const code=picked || (codeMatch ? codeMatch[1] : raw);
+  const r=await fetch('/api/resolve?code='+encodeURIComponent(code));
+  const j=await r.json();
+  if(j.ticker===null){log(j.error||'종목 해석 실패','err'); return null;}
+  return j.ticker;
 }
 
-function saveNote(id, ev){
-  const bullets = uniqueList((ev.bullets || []).map(v => polished(v, 230)).filter(Boolean));
-  noteStore[id] = {
-    content: ev.content,
-    summary: polished(ev.summary, 420),
-    headline: polished(bullets[0] || ev.headline || ev.summary, 240),
-    bullets
-  };
-  renderAgents();
-}
-function setStep(id, state){ const el = document.querySelector(`[data-step="${id}"]`); if(!el) return; el.className = `step ${state || ""}`; el.querySelector("em").textContent = state === "done" ? "DONE" : state === "on" ? "LIVE" : "WAIT"; }
-function setChain(id, state, text){ const el = document.querySelector(`[data-chain="${id}"]`); if(!el) return; el.className = `chain-row ${state || ""}`; el.querySelector("em").textContent = state === "done" ? "DONE" : state === "on" ? "LIVE" : "WAIT"; el.querySelector("p").textContent = text; }
-function stopStream(updateButton = true){ if(es){ es.close(); es = null; } if(timer){ clearInterval(timer); timer = null; } if(updateButton){ $("#go").disabled = false; $("#go").textContent = "다시 실행"; $("#conn").textContent = "종료"; $("#conn").classList.remove("live"); } }
-function log(msg, err=false){ const t = new Date().toLocaleTimeString("ko-KR",{hour12:false}); const d = document.createElement("div"); d.innerHTML = `<b>${t}</b> ${escapeHtml(msg)}`; if(err) d.style.color = "var(--red)"; $("#log").appendChild(d); $("#log").scrollTop = $("#log").scrollHeight; }
-function label(id){ return (AGENTS[id] || [String(id).toUpperCase()])[0]; }
-function polished(value, max=180){
-  let text = String(value || "").replace(/\s+/g," ").trim();
-  text = text.replace(/[*#`>|]/g, "");
-  text = text.replace(/^(FINAL TRANSACTION PROPOSAL|Overall Sentiment|Reasoning|Rationale|Investment Thesis|Recommendation|Rating|Action)\s*[:：-]\s*/i, "");
-  text = text.replace(/^(BUY|SELL|HOLD|OVERWEIGHT|UNDERWEIGHT)\s*$/i, "");
-  text = text.replace(/^\[[^\]]+\]\s*/, "");
-  text = text.replace(/^[가-힣A-Za-z\s·]+(?:매니저|분석가|위원|트레이더)\s*[:：-]\s*/, "");
-  if(/(종합 보고서|분석 보고서|Fundamental Analysis|Technical Analysis|시장 분석을 위한 .*지표 선정)/i.test(text)) return "";
-  return compact(text, max);
-}
-function compact(value, max){ const text = String(value || "").replace(/\s+/g," ").trim(); return text.length > max ? text.slice(0,max-1).trimEnd() + "..." : text; }
-function uniqueList(items){
-  const seen = new Set();
-  return items.map(v => String(v || "").trim()).filter(v => {
-    if(!v || seen.has(v)) return false;
-    seen.add(v);
-    return true;
+$('#go').addEventListener('click',()=>{
+  resolveTicker().then(tk=>{
+  if(!tk){return;}
+  reset(); $('#go').disabled=true;
+  log('종목 해석: '+tk,'ok');
+  t0=Date.now(); timer=setInterval(()=>{$('#mTime').textContent=((Date.now()-t0)/1000).toFixed(1)+'s';},200);
+  $('#conn').textContent='LIVE'; $('#conn').classList.add('live');
+  es=new EventSource(`/api/stream?ticker=${encodeURIComponent(tk)}`);
+  es.onmessage=e=>{try{handle(JSON.parse(e.data));}catch(err){log('파싱 오류: '+err,'err');}};
+  es.onerror=()=>{log('스트림 연결 종료','err'); stopStream();};
   });
-}
-function buildVisualDigest(text, id){
-  const source = String(text || "");
-  const signal = detectSignal(source);
-  const stats = extractStats(source, id);
-  const levels = extractLevels(source);
-  const meters = extractMeters(source);
-  if(!signal && !stats.length && levels.length < 2 && !meters.length) return "";
-  return `<section class="visual-digest">
-    <div class="visual-head"><h4>시각 요약</h4>${signal ? `<span class="signal-pill ${escapeHtml(signal.toLowerCase())}">${escapeHtml(signal)}</span>` : ""}</div>
-    ${stats.length ? `<div class="stat-grid">${stats.slice(0,6).map(stat => `<div class="stat-card"><b>${escapeHtml(stat.label)}</b><strong>${escapeHtml(stat.value)}</strong><span>${escapeHtml(stat.note)}</span></div>`).join("")}</div>` : ""}
-    ${levels.length >= 2 ? renderLevelMap(levels) : ""}
-    ${meters.length ? `<div class="meter-row">${meters.map(m => `<div class="meter-line"><span>${escapeHtml(m.label)}</span><div class="meter-bar"><div class="meter-fill" style="width:${Math.max(4, Math.min(100, m.value))}%"></div></div><b>${escapeHtml(m.display)}</b></div>`).join("")}</div>` : ""}
-  </section>`;
-}
-function detectSignal(text){
-  const direct = text.match(/FINAL TRANSACTION PROPOSAL\s*:\s*\**\s*(BUY|SELL|HOLD|OVERWEIGHT|UNDERWEIGHT)\s*\**/i)
-    || text.match(/\b(Rating|Action|Recommendation)\s*[:：-]\s*\**\s*(BUY|SELL|HOLD|OVERWEIGHT|UNDERWEIGHT)\s*\**/i);
-  return direct ? direct[direct.length - 1].toUpperCase() : "";
-}
-function extractStats(text, id){
-  const stats = [];
-  const current = firstNumber(text, /(현재가|종가|Close)[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
-  const sma50 = firstNumber(text, /(50일\s*(?:SMA|단순이동평균선)|50\s*SMA)[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
-  const sma200 = firstNumber(text, /(200일\s*(?:SMA|단순이동평균선)|200\s*SMA)[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
-  const rsi = firstNumber(text, /\bRSI\b[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
-  const atr = firstNumber(text, /\bATR\b[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
-  const macd = firstNumber(text, /\bMACD\b[^\d-]{0,28}(-?[\d,]+(?:\.\d+)?)/i);
-  if(current) stats.push({label:"현재가", value:formatNumber(current), note:"리포트 기준 가격"});
-  if(sma50) stats.push({label:"50일선", value:formatNumber(sma50), note:"중기 지지/저항"});
-  if(sma200) stats.push({label:"200일선", value:formatNumber(sma200), note:"장기 추세 기준"});
-  if(rsi) stats.push({label:"RSI", value:rsi.toFixed(rsi % 1 ? 1 : 0), note:rsi >= 70 ? "과열" : rsi <= 30 ? "침체" : "중립권"});
-  if(atr) stats.push({label:"ATR", value:formatNumber(atr), note:"일평균 변동폭"});
-  if(macd) stats.push({label:"MACD", value:formatNumber(macd), note:macd >= 0 ? "양의 모멘텀" : "음의 모멘텀"});
-  if(!stats.length && id){
-    stats.push({label:"에이전트", value:label(id), note:"상세 원문 기준"});
-  }
-  return stats;
-}
-function extractLevels(text){
-  const levels = [];
-  const add = (kind, label, regex) => {
-    const value = firstNumber(text, regex);
-    if(value) levels.push({kind, label, value});
-  };
-  add("stop","손절", /(손절가|Stop-loss)[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
-  add("support","지지", /(볼린저 밴드 하단|하단 밴드|지지선|지지대)[^\d]{0,40}([\d,]+(?:\.\d+)?)/i);
-  add("current","현재", /(현재가|종가|Close)[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
-  add("resist","저항", /(VWMA|저항대|저항선)[^\d]{0,40}([\d,]+(?:\.\d+)?)/i);
-  add("target","목표", /(목표가|Target Price|단기 목표가|중기 목표가)[^\d]{0,40}([\d,]+(?:\.\d+)?)/i);
-  const unique = [];
-  const seen = new Set();
-  for(const level of levels){
-    const key = `${level.kind}-${Math.round(level.value)}`;
-    if(!seen.has(key)){ seen.add(key); unique.push(level); }
-  }
-  return unique.sort((a,b) => a.value - b.value).slice(0,6);
-}
-function extractMeters(text){
-  const meters = [];
-  const rsi = firstNumber(text, /\bRSI\b[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
-  if(rsi) meters.push({label:"RSI", value:rsi, display:rsi.toFixed(0)});
-  const drawdown = text.match(/전고점[^\d]{0,40}대비\s*약\s*([\d.]+)%/);
-  if(drawdown) meters.push({label:"조정폭", value:Math.min(100, Number(drawdown[1]) * 3), display:`${drawdown[1]}%`});
-  const confidence = text.match(/Confidence\s*[:：-]\s*(High|Medium|Low)/i);
-  if(confidence){
-    const map = {high:86, medium:58, low:30};
-    meters.push({label:"신뢰도", value:map[confidence[1].toLowerCase()], display:confidence[1]});
-  }
-  return meters.slice(0,3);
-}
-function renderLevelMap(levels){
-  const values = levels.map(level => level.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = Math.max(1, max - min);
-  return `<div class="level-map"><h5>가격 레벨 맵</h5><div class="level-track">${levels.map(level => {
-    const left = ((level.value - min) / span) * 100;
-    return `<div class="level-point ${escapeHtml(level.kind)}" style="left:${Math.max(0, Math.min(100, left))}%"><i></i><span>${escapeHtml(level.label)}</span><em>${escapeHtml(formatNumber(level.value))}</em></div>`;
-  }).join("")}</div></div>`;
-}
-function firstNumber(text, regex){
-  const match = String(text || "").match(regex);
-  if(!match) return null;
-  const raw = match[match.length - 1];
-  const value = Number(String(raw).replace(/,/g,""));
-  return Number.isFinite(value) ? value : null;
-}
-function formatNumber(value){
-  if(value === null || value === undefined) return "";
-  return Number(value).toLocaleString("ko-KR", {maximumFractionDigits: value < 100 ? 2 : 0});
-}
-function renderMarkdown(markdown){
-  const lines = String(markdown || "").replace(/\r\n/g,"\n").split("\n");
-  const html = [];
-  let i = 0;
-  while(i < lines.length){
-    const raw = lines[i];
-    const line = raw.trim();
-    if(!line){ i++; continue; }
-    const proposal = line.match(/^FINAL TRANSACTION PROPOSAL\s*:\s*\**([^*]+)\**/i);
-    if(proposal){ html.push(`<div class="proposal">제안 ${escapeHtml(proposal[1].trim())}</div>`); i++; continue; }
-    if(/^---+$/.test(line)){ html.push("<hr>"); i++; continue; }
-    const heading = line.match(/^(#{1,4})\s+(.+)$/);
-    if(heading){
-      const level = Math.min(heading[1].length + 1, 4);
-      html.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
-      i++;
-      continue;
-    }
-    if(isTableStart(lines, i)){
-      const rows = [];
-      rows.push(parseTableRow(lines[i]));
-      i += 2;
-      while(i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])){
-        rows.push(parseTableRow(lines[i]));
-        i++;
-      }
-      html.push(renderTable(rows));
-      continue;
-    }
-    if(/^\s*[-*]\s+/.test(raw)){
-      const items = [];
-      while(i < lines.length && /^\s*[-*]\s+/.test(lines[i])){
-        items.push(lines[i].replace(/^\s*[-*]\s+/,"").trim());
-        i++;
-      }
-      html.push(`<ul>${items.map(item => `<li>${inlineMarkdown(item)}</li>`).join("")}</ul>`);
-      continue;
-    }
-    if(/^\s*\d+[.)]\s+/.test(raw)){
-      const items = [];
-      while(i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])){
-        items.push(lines[i].replace(/^\s*\d+[.)]\s+/,"").trim());
-        i++;
-      }
-      html.push(`<ol>${items.map(item => `<li>${inlineMarkdown(item)}</li>`).join("")}</ol>`);
-      continue;
-    }
-    const para = [line];
-    i++;
-    while(i < lines.length && lines[i].trim() && !/^(#{1,4})\s+/.test(lines[i].trim()) && !/^\s*([-*]|\d+[.)])\s+/.test(lines[i]) && !isTableStart(lines, i)){
-      para.push(lines[i].trim());
-      i++;
-    }
-    html.push(`<p>${inlineMarkdown(para.join(" "))}</p>`);
-  }
-  return html.join("");
-}
-function isTableStart(lines, i){
-  return /^\s*\|.*\|\s*$/.test(lines[i] || "") && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[i+1] || "");
-}
-function parseTableRow(line){
-  return line.trim().replace(/^\|/,"").replace(/\|$/,"").split("|").map(cell => cell.trim());
-}
-function renderTable(rows){
-  const head = rows[0] || [];
-  const body = rows.slice(1);
-  return `<table><thead><tr>${head.map(cell => `<th>${inlineMarkdown(cell)}</th>`).join("")}</tr></thead><tbody>${body.map(row => `<tr>${row.map(cell => `<td>${inlineMarkdown(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-}
-function inlineMarkdown(value){
-  let text = escapeHtml(value);
-  text = text.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
-  text = text.replace(/`([^`]+)`/g,"<code>$1</code>");
-  text = text.replace(/&lt;br\s*\/?&gt;/gi,"<br>");
-  return text;
-}
-function escapeHtml(value){ return String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;"); }
-init();
+});
 </script>
 </body>
 </html>

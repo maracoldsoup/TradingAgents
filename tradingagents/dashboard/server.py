@@ -26,6 +26,78 @@ from .events import DashboardEventTranslator
 _STATIC = Path(__file__).parent / "static"
 
 GraphFactory = Callable[[], Any]
+NameMapProvider = Callable[[], dict[str, str]]
+SuffixProber = Callable[[str], bool]
+
+
+def _default_name_map() -> dict[str, str]:
+    """KRX code→name map from config (bare 6-digit codes only)."""
+    from tradingagents.default_config import DEFAULT_CONFIG
+
+    return {
+        code: name
+        for code, name in DEFAULT_CONFIG.get("korean_ticker_names", {}).items()
+        if code.isdigit() and len(code) == 6
+    }
+
+
+def _default_suffix_prober(ticker: str) -> bool:
+    """True if yfinance has price rows for the suffixed ticker."""
+    import yfinance as yf
+
+    try:
+        return not yf.Ticker(ticker).history(period="5d").empty
+    except Exception:
+        return False
+
+
+def search_names(name_map: dict[str, str], query: str, limit: int = 12) -> list[dict[str, str]]:
+    """Unified picker search: global symbols + KRX names.
+
+    KRX rows return the *bare* 6-digit code — never a guessed suffix.
+    KOSPI/KOSDAQ is decided by /api/resolve via a live yfinance probe,
+    because the DART corp map carries no market field (hardcoding .KS
+    breaks every KOSDAQ name).
+    Rank: exact code > code prefix > name prefix > name substring.
+    """
+    q = query.strip()
+    if not q:
+        return []
+    ql = q.lower()
+    exact, code_pre, name_pre, name_sub = [], [], [], []
+    for code, name in name_map.items():
+        nl = name.lower()
+        if code == q:
+            exact.append((code, name))
+        elif code.startswith(q):
+            code_pre.append((code, name))
+        elif nl.startswith(ql):
+            name_pre.append((code, name))
+        elif ql in nl:
+            name_sub.append((code, name))
+    ranked = exact + sorted(code_pre) + sorted(name_pre, key=lambda x: x[1]) + sorted(name_sub, key=lambda x: x[1])
+    rows = [{"code": c, "name": n, "market": "KR"} for c, n in ranked]
+    for item in _GLOBAL_SYMBOLS:
+        hay = f"{item['symbol']} {item['name']}".lower()
+        if q == item["symbol"] or ql in hay:
+            rows.insert(0, {"code": item["symbol"], "name": item["name"], "market": item["market"]})
+    return rows[:limit]
+
+
+def resolve_suffix(
+    code: str,
+    prober: SuffixProber,
+    cache: dict[str, str],
+) -> str | None:
+    """Resolve a bare KRX code to a tradable .KS/.KQ ticker (cached)."""
+    if code in cache:
+        return cache[code]
+    for suffix in (".KS", ".KQ"):
+        ticker = f"{code}{suffix}"
+        if prober(ticker):
+            cache[code] = ticker
+            return ticker
+    return None
 
 _GLOBAL_SYMBOLS = [
     {"symbol": "NVDA", "name": "NVIDIA", "market": "US"},
@@ -74,46 +146,6 @@ def _default_graph_factory() -> Any:
     return TradingAgentsGraph(debug=False, config=DEFAULT_CONFIG.copy())
 
 
-def search_symbols(query: str = "", limit: int = 30) -> list[dict[str, str]]:
-    """Search configured symbols for the dashboard picker."""
-    from tradingagents.default_config import DEFAULT_CONFIG
-
-    q = query.strip().lower()
-    rows: list[dict[str, str]] = []
-    seen: set[str] = set()
-
-    for item in _GLOBAL_SYMBOLS:
-        symbol = item["symbol"]
-        haystack = f"{symbol} {item['name']} {item['market']}".lower()
-        if not q or q in haystack:
-            rows.append(dict(item))
-            seen.add(symbol)
-
-    for code, name in (DEFAULT_CONFIG.get("korean_ticker_names") or {}).items():
-        if not code or "." in code:
-            continue
-        symbol = f"{code}.KS"
-        haystack = f"{code} {symbol} {name} KR KRX".lower()
-        if symbol in seen or (q and q not in haystack):
-            continue
-        rows.append({"symbol": symbol, "name": str(name), "market": "KR"})
-        seen.add(symbol)
-
-    def rank(item: dict[str, str]) -> tuple[int, int, str]:
-        symbol = item["symbol"].lower()
-        name = item["name"].lower()
-        popularity = _POPULAR_SYMBOL_RANK.get(item["symbol"], 999)
-        if not q:
-            return (2, popularity, item["symbol"])
-        if symbol == q or symbol.replace(".ks", "") == q:
-            return (0, popularity, item["symbol"])
-        if symbol.startswith(q) or name.startswith(q):
-            return (1, popularity, item["symbol"])
-        return (2, popularity, item["symbol"])
-
-    return sorted(rows, key=rank)[: max(1, min(limit, 80))]
-
-
 def _sse(event: dict[str, Any]) -> str:
     return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
@@ -138,17 +170,28 @@ def run_graph_to_queue(
         )
         final_state, decision = graph.propagate(ticker, trade_date, on_chunk=on_chunk)
         if hasattr(graph, "save_reports"):
-            report_path = graph.save_reports(final_state, ticker)
+            report_path = Path(graph.save_reports(final_state, ticker))
+            # Real save_reports returns a report *tree* directory (a single
+            # file is tolerated defensively); downloads need one file, so
+            # concatenate the tree into a dossier markdown.
+            report_dir = report_path if report_path.is_dir() else report_path.parent
+            sections = [
+                f.read_text(encoding="utf-8")
+                for f in sorted(report_dir.rglob("*.md"))
+                if f.name != "dossier.md"
+            ]
+            dossier = report_dir / "dossier.md"
+            dossier.write_text("\n\n---\n\n".join(sections), encoding="utf-8")
             artifact_id = uuid.uuid4().hex
             if artifact_registry is not None:
-                artifact_registry[artifact_id] = Path(report_path)
+                artifact_registry[artifact_id] = dossier
             out.put(
                 {
                     "type": "artifact",
                     "kind": "complete_report",
                     "id": artifact_id,
-                    "path": str(report_path),
-                    "directory": str(Path(report_path).parent),
+                    "path": str(dossier),
+                    "directory": str(report_dir),
                     "download_url": f"/api/artifacts/{artifact_id}/download",
                     "text_url": f"/api/artifacts/{artifact_id}/text",
                 }
@@ -160,18 +203,41 @@ def run_graph_to_queue(
         out.put(None)  # sentinel: stream finished
 
 
-def create_app(graph_factory: GraphFactory | None = None):
-    """Build the FastAPI app. ``graph_factory`` is injectable for tests."""
+def create_app(
+    graph_factory: GraphFactory | None = None,
+    name_map_provider: NameMapProvider | None = None,
+    suffix_prober: SuffixProber | None = None,
+):
+    """Build the FastAPI app. Collaborators are injectable for tests."""
     from fastapi import FastAPI, HTTPException
     from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 
     factory = graph_factory or _default_graph_factory
+    get_name_map = name_map_provider or _default_name_map
+    prober = suffix_prober or _default_suffix_prober
+    suffix_cache: dict[str, str] = {}
     app = FastAPI(title="TradingAgents Dashboard")
     artifact_registry: dict[str, Path] = {}
 
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(_STATIC / "index.html")
+
+    @app.get("/api/search")
+    def search(q: str) -> dict[str, Any]:
+        return {"results": search_names(get_name_map(), q)}
+
+    @app.get("/api/resolve")
+    def resolve(code: str) -> dict[str, Any]:
+        code = code.strip()
+        if not (code.isdigit() and len(code) == 6):
+            # US/global tickers pass through untouched.
+            return {"ticker": code, "resolved": False}
+        ticker = resolve_suffix(code, prober, suffix_cache)
+        if ticker is None:
+            return {"ticker": None, "resolved": False,
+                    "error": f"{code}: .KS/.KQ 모두 시세를 찾지 못했습니다"}
+        return {"ticker": ticker, "resolved": True}
 
     @app.get("/api/stream")
     def stream(ticker: str, date: str | None = None) -> StreamingResponse:
@@ -197,10 +263,6 @@ def create_app(graph_factory: GraphFactory | None = None):
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
-
-    @app.get("/api/symbols")
-    def symbols(q: str = "", limit: int = 30) -> dict[str, Any]:
-        return {"symbols": search_symbols(q, limit)}
 
     def _artifact_path(artifact_id: str) -> Path:
         path = artifact_registry.get(artifact_id)

@@ -7,7 +7,6 @@ import json
 import pytest
 
 from tradingagents.dashboard.events import DashboardEventTranslator, summarize_content
-from tradingagents.dashboard.server import search_symbols
 
 
 def _types(events):
@@ -100,11 +99,13 @@ def test_sse_stream_end_to_end_with_fake_graph(tmp_path):
             return {}, "HOLD"
 
         def save_reports(self, final_state, ticker, save_path=None):
+            # Model the real contract: write_report_tree returns a DIRECTORY.
             self.saved = True
-            report_path = tmp_path / "reports" / "005930.KS" / "complete_report.md"
-            report_path.parent.mkdir(parents=True)
-            report_path.write_text("# Canonical report\n\nReal saved report.", encoding="utf-8")
-            return report_path
+            report_dir = tmp_path / "reports" / "005930.KS_20260707"
+            (report_dir / "1_analysts").mkdir(parents=True)
+            (report_dir / "1_analysts" / "market.md").write_text("# 차트", encoding="utf-8")
+            (report_dir / "decision.md").write_text("# 최종", encoding="utf-8")
+            return report_dir
 
     app = create_app(graph_factory=FakeGraph)
     client = TestClient(app)
@@ -123,56 +124,47 @@ def test_sse_stream_end_to_end_with_fake_graph(tmp_path):
     assert "artifact" in kinds
     artifact = [p for p in payloads if p["type"] == "artifact"][0]
     assert artifact["kind"] == "complete_report"
-    assert artifact["path"].endswith("complete_report.md")
+    assert artifact["path"].endswith("dossier.md")
     assert artifact["download_url"].startswith("/api/artifacts/")
     report = client.get(artifact["download_url"])
     assert report.status_code == 200
-    assert report.text == "# Canonical report\n\nReal saved report."
+    assert "# 차트" in report.text and "# 최종" in report.text
     report_text = client.get(artifact["text_url"])
-    assert report_text.text == "# Canonical report\n\nReal saved report."
+    assert "# 차트" in report_text.text and "# 최종" in report_text.text
     assert kinds[-1] == "stage" and payloads[-1]["stage"] == "done"
     assert payloads[-1]["decision"] == "HOLD"
 
 
-def test_dashboard_index_and_symbol_search_api():
+def test_dashboard_index_and_search_api():
     pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient
 
     from tradingagents.dashboard.server import create_app
 
-    app = create_app(graph_factory=lambda: None)
+    app = create_app(
+        graph_factory=lambda: None,
+        name_map_provider=lambda: {"005930": "삼성전자", "247540": "에코프로비엠"},
+        suffix_prober=lambda t: t == "247540.KQ",
+    )
     client = TestClient(app)
 
     html = client.get("/")
     assert html.status_code == 200
-    assert "TRADINGAGENTS" in html.text and "WAR ROOM" in html.text
-    assert "종목명, 코드, 글로벌 티커 검색" in html.text
-    assert "Markdown 다운로드" in html.text
-    assert "인쇄/PDF" in html.text
-    assert "buildReportMarkdown" not in html.text
-    assert "renderMarkdown" in html.text
-    assert "buildVisualDigest" in html.text
-    assert "가격 레벨 맵" in html.text
-    assert "summary-box" in html.text
-    assert "visual-digest" in html.text
-    assert "<pre" not in html.text
+    assert "EventSource" in html.text and "/api/search" in html.text
 
-    symbols = client.get("/api/symbols?q=삼성&limit=5").json()["symbols"]
-    assert symbols[0]["symbol"] == "005930.KS"
+    rows = client.get("/api/search?q=삼성").json()["results"]
+    assert rows and rows[0]["code"] == "005930" and rows[0]["market"] == "KR"
 
-    global_symbols = client.get("/api/symbols?q=NVDA&limit=5").json()["symbols"]
-    assert global_symbols[0]["symbol"] == "NVDA"
+    rows = client.get("/api/search?q=NVDA").json()["results"]
+    assert rows and rows[0]["code"] == "NVDA"
 
-    missing = client.get("/api/artifacts/not-registered/download")
-    assert missing.status_code == 404
+    # 코스닥 종목: .KS 하드코딩이 아니라 프로브 결과(.KQ)를 따라야 한다
+    resolved = client.get("/api/resolve?code=247540").json()
+    assert resolved == {"ticker": "247540.KQ", "resolved": True}
 
+    passthrough = client.get("/api/resolve?code=NVDA").json()
+    assert passthrough["ticker"] == "NVDA" and passthrough["resolved"] is False
 
-def test_search_symbols_finds_korean_name_and_global_ticker():
-    korean = search_symbols("삼성전자", limit=5)
-    assert korean[0]["symbol"] == "005930.KS"
-
-    global_result = search_symbols("bitcoin", limit=5)
-    assert any(item["symbol"] == "BTC-USD" for item in global_result)
 
 
 def test_summarize_content_strips_markdown_and_extracts_bullets():

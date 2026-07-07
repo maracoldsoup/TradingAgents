@@ -150,6 +150,12 @@ def test_dashboard_index_and_symbol_search_api():
     assert "Markdown 다운로드" in html.text
     assert "인쇄/PDF" in html.text
     assert "buildReportMarkdown" not in html.text
+    assert "renderMarkdown" in html.text
+    assert "buildVisualDigest" in html.text
+    assert "가격 레벨 맵" in html.text
+    assert "summary-box" in html.text
+    assert "visual-digest" in html.text
+    assert "<pre" not in html.text
 
     symbols = client.get("/api/symbols?q=삼성&limit=5").json()["symbols"]
     assert symbols[0]["symbol"] == "005930.KS"
@@ -184,13 +190,19 @@ def test_summarize_content_strips_markdown_and_extracts_bullets():
 
 def test_summarize_content_skips_report_titles_for_dashboard_copy():
     result = summarize_content(
+        "FINAL TRANSACTION PROPOSAL: **BUY**\n\n"
+        "### 1. 개요 및 요약\n"
         "## 삼성전자(Samsung Electronics Co., Ltd. / 005930.KS) 기업 기본적 분석"
         "(Fundamental Analysis) 종합 보고서\n\n"
+        "### 2. 시장 분석을 위한 8개 핵심 기술적 지표 선정 및 선정 이유\n"
         "Reasoning: 2분기 실적은 견조하지만 밸류에이션 부담이 남아 있습니다.\n"
         "- 50일선 회복 전까지 관망이 필요합니다."
     )
 
     assert "종합 보고서" not in result["headline"]
+    assert "FINAL TRANSACTION" not in result["headline"]
+    assert "개요 및 요약" not in result["bullets"]
+    assert not any("시장 분석을 위한" in bullet for bullet in result["bullets"])
     assert result["headline"] == "2분기 실적은 견조하지만 밸류에이션 부담이 남아 있습니다."
 
 

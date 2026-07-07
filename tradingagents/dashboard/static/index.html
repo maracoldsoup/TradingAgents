@@ -111,8 +111,48 @@ button{cursor:pointer}
 .conflict-card p{margin:0;color:#303946;font-size:13px;line-height:1.55}
 .detail-card{border:3px solid var(--line);background:#fffaf0;border-radius:6px;padding:13px;margin-bottom:12px;box-shadow:4px 4px 0 rgba(0,0,0,.18)}
 .detail-card h3{margin:0 0 8px;font-size:15px}
-.detail{max-height:340px;overflow:auto;color:#1f2933;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:keep-all}
+.detail{max-height:520px;overflow:auto;color:#1f2933;font-size:13px;line-height:1.6;word-break:keep-all}
 .detail ul{padding-left:18px;margin:8px 0}.detail li{margin:4px 0}
+.summary-box{border:2px solid #d0c4b0;background:#fff;border-radius:6px;padding:10px;margin-bottom:12px}
+.summary-box h4,.md h4{margin:0 0 8px;font-size:13px}
+.summary-box ul{margin:0;padding-left:18px}
+.visual-digest{border:3px solid var(--line);background:#101820;color:#fff;border-radius:6px;padding:12px;margin-bottom:12px;box-shadow:4px 4px 0 rgba(0,0,0,.18)}
+.visual-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.visual-head h4{margin:0;color:#ffc247;font-size:13px}
+.signal-pill{border:2px solid #fff;border-radius:999px;padding:5px 9px;font:900 12px var(--mono);background:#fff;color:#101820}
+.signal-pill.buy,.signal-pill.overweight{background:#ffe3e3;color:#a32020;border-color:#ff7777}
+.signal-pill.sell,.signal-pill.underweight{background:#e0ecff;color:#184f94;border-color:#75a8ff}
+.signal-pill.hold{background:#fff2c7;color:#806000;border-color:#ffd35f}
+.stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.stat-card{border:1px solid #35485f;background:#172532;border-radius:6px;padding:9px;min-height:68px}
+.stat-card b{display:block;color:#9fb1c8;font:10px var(--mono);letter-spacing:.8px;text-transform:uppercase}
+.stat-card strong{display:block;margin-top:4px;color:#fff;font-size:17px;line-height:1.2}
+.stat-card span{display:block;margin-top:3px;color:#b9c3d2;font-size:11px}
+.level-map{border:1px solid #35485f;background:#0c131b;border-radius:6px;padding:10px;margin-top:8px}
+.level-map h5{margin:0 0 18px;color:#b9c3d2;font-size:11px}
+.level-track{position:relative;height:46px;border-top:3px solid #cbd5e1;margin:0 6px 4px}
+.level-point{position:absolute;top:-10px;transform:translateX(-50%);display:grid;justify-items:center;gap:3px;min-width:56px}
+.level-point i{width:16px;height:16px;border:3px solid #101820;border-radius:50%;background:#ffc247;box-shadow:0 0 0 2px #fff}
+.level-point.current i{background:#4dd28a}.level-point.stop i{background:#ff6f6f}.level-point.target i{background:#68a7ff}
+.level-point span{font:10px var(--mono);color:#fff;white-space:nowrap}
+.level-point em{font:10px var(--mono);font-style:normal;color:#b9c3d2;white-space:nowrap}
+.meter-row{display:grid;gap:6px;margin-top:10px}
+.meter-line{display:grid;grid-template-columns:72px 1fr 54px;gap:8px;align-items:center;font-size:11px;color:#cbd5e1}
+.meter-bar{height:8px;background:#263649;border-radius:999px;overflow:hidden}
+.meter-fill{height:100%;background:#ffc247}
+.md{display:grid;gap:10px}
+.md h2,.md h3{margin:14px 0 4px;padding-bottom:5px;border-bottom:2px solid #dfd4c2;font-size:15px}
+.md h4{margin-top:10px;color:#243144}
+.md p{margin:0;color:#25303d}
+.md strong{font-weight:900;color:#101820}
+.md code{font-family:var(--mono);background:#f1eadc;border:1px solid #d8cdbd;border-radius:4px;padding:1px 4px}
+.md ul,.md ol{margin:0;padding-left:20px}
+.md li{margin:4px 0}
+.md table{width:100%;border-collapse:collapse;background:#fff;font-size:12px;display:block;overflow:auto}
+.md th,.md td{border:1px solid #cfc4b1;padding:7px;vertical-align:top;text-align:left}
+.md th{background:#efe4cf;font-weight:900}
+.md .proposal{display:inline-block;border:3px solid var(--line);background:#ffc247;color:#111;border-radius:6px;padding:8px 10px;font:900 16px var(--mono);box-shadow:3px 3px 0 rgba(0,0,0,.18)}
+.md hr{border:0;border-top:2px solid #dfd4c2;margin:4px 0}
 .report-box{border:3px solid var(--line);background:#101820;color:#fff;border-radius:6px;padding:14px;margin-bottom:14px;box-shadow:4px 4px 0 rgba(0,0,0,.18)}
 .report-box h3{margin:0 0 8px;font-size:15px;color:#ffc247}
 .report-box p{margin:0 0 10px;color:#cbd5e1;font-size:13px;line-height:1.55}
@@ -296,8 +336,11 @@ function showDetail(id){
     $("#detail").textContent = "아직 수신된 내용이 없습니다.";
     return;
   }
-  const bullets = (note.bullets || []).map(v => `<li>${escapeHtml(v)}</li>`).join("");
-  $("#detail").innerHTML = `${bullets ? `<ul>${bullets}</ul>` : ""}<pre style="white-space:pre-wrap;font:inherit;margin:10px 0 0">${escapeHtml(note.content || note.summary || "")}</pre>`;
+  const bullets = uniqueList(note.bullets || []).slice(0,6).map(v => `<li>${escapeHtml(v)}</li>`).join("");
+  $("#detail").innerHTML = `
+    ${buildVisualDigest(note.content || note.summary || "", id)}
+    ${bullets ? `<section class="summary-box"><h4>핵심 요약</h4><ul>${bullets}</ul></section>` : ""}
+    <section class="md">${renderMarkdown(note.content || note.summary || "")}</section>`;
 }
 
 function wireSearch(){
@@ -481,15 +524,15 @@ async function printReport(){
   if(!win) return;
   win.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${escapeHtml(selectedTicker)} Report</title><style>
     body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;margin:32px;color:#111827;line-height:1.58}
-    pre{white-space:pre-wrap;font:inherit}
-  </style></head><body><pre>${escapeHtml(markdown)}</pre></body></html>`);
+    h1,h2,h3{break-after:avoid} table{width:100%;border-collapse:collapse;font-size:12px} th,td{border:1px solid #d1d5db;padding:7px;vertical-align:top;text-align:left} th{background:#f3f4f6}.proposal{display:inline-block;border:2px solid #111;padding:8px 10px;font-weight:800}
+  </style></head><body>${renderMarkdown(markdown)}</body></html>`);
   win.document.close();
   win.focus();
   win.print();
 }
 
 function saveNote(id, ev){
-  const bullets = (ev.bullets || []).map(v => polished(v, 230)).filter(Boolean);
+  const bullets = uniqueList((ev.bullets || []).map(v => polished(v, 230)).filter(Boolean));
   noteStore[id] = {
     content: ev.content,
     summary: polished(ev.summary, 420),
@@ -505,13 +548,189 @@ function log(msg, err=false){ const t = new Date().toLocaleTimeString("ko-KR",{h
 function label(id){ return (AGENTS[id] || [String(id).toUpperCase()])[0]; }
 function polished(value, max=180){
   let text = String(value || "").replace(/\s+/g," ").trim();
+  text = text.replace(/[*#`>|]/g, "");
   text = text.replace(/^(FINAL TRANSACTION PROPOSAL|Overall Sentiment|Reasoning|Rationale|Investment Thesis|Recommendation|Rating|Action)\s*[:：-]\s*/i, "");
+  text = text.replace(/^(BUY|SELL|HOLD|OVERWEIGHT|UNDERWEIGHT)\s*$/i, "");
   text = text.replace(/^\[[^\]]+\]\s*/, "");
   text = text.replace(/^[가-힣A-Za-z\s·]+(?:매니저|분석가|위원|트레이더)\s*[:：-]\s*/, "");
-  if(/(종합 보고서|분석 보고서|Fundamental Analysis|Technical Analysis)/i.test(text)) return "보고서 제목은 제외하고 상세 근거를 확인하세요.";
+  if(/(종합 보고서|분석 보고서|Fundamental Analysis|Technical Analysis|시장 분석을 위한 .*지표 선정)/i.test(text)) return "";
   return compact(text, max);
 }
 function compact(value, max){ const text = String(value || "").replace(/\s+/g," ").trim(); return text.length > max ? text.slice(0,max-1).trimEnd() + "..." : text; }
+function uniqueList(items){
+  const seen = new Set();
+  return items.map(v => String(v || "").trim()).filter(v => {
+    if(!v || seen.has(v)) return false;
+    seen.add(v);
+    return true;
+  });
+}
+function buildVisualDigest(text, id){
+  const source = String(text || "");
+  const signal = detectSignal(source);
+  const stats = extractStats(source, id);
+  const levels = extractLevels(source);
+  const meters = extractMeters(source);
+  if(!signal && !stats.length && levels.length < 2 && !meters.length) return "";
+  return `<section class="visual-digest">
+    <div class="visual-head"><h4>시각 요약</h4>${signal ? `<span class="signal-pill ${escapeHtml(signal.toLowerCase())}">${escapeHtml(signal)}</span>` : ""}</div>
+    ${stats.length ? `<div class="stat-grid">${stats.slice(0,6).map(stat => `<div class="stat-card"><b>${escapeHtml(stat.label)}</b><strong>${escapeHtml(stat.value)}</strong><span>${escapeHtml(stat.note)}</span></div>`).join("")}</div>` : ""}
+    ${levels.length >= 2 ? renderLevelMap(levels) : ""}
+    ${meters.length ? `<div class="meter-row">${meters.map(m => `<div class="meter-line"><span>${escapeHtml(m.label)}</span><div class="meter-bar"><div class="meter-fill" style="width:${Math.max(4, Math.min(100, m.value))}%"></div></div><b>${escapeHtml(m.display)}</b></div>`).join("")}</div>` : ""}
+  </section>`;
+}
+function detectSignal(text){
+  const direct = text.match(/FINAL TRANSACTION PROPOSAL\s*:\s*\**\s*(BUY|SELL|HOLD|OVERWEIGHT|UNDERWEIGHT)\s*\**/i)
+    || text.match(/\b(Rating|Action|Recommendation)\s*[:：-]\s*\**\s*(BUY|SELL|HOLD|OVERWEIGHT|UNDERWEIGHT)\s*\**/i);
+  return direct ? direct[direct.length - 1].toUpperCase() : "";
+}
+function extractStats(text, id){
+  const stats = [];
+  const current = firstNumber(text, /(현재가|종가|Close)[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
+  const sma50 = firstNumber(text, /(50일\s*(?:SMA|단순이동평균선)|50\s*SMA)[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
+  const sma200 = firstNumber(text, /(200일\s*(?:SMA|단순이동평균선)|200\s*SMA)[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
+  const rsi = firstNumber(text, /\bRSI\b[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
+  const atr = firstNumber(text, /\bATR\b[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
+  const macd = firstNumber(text, /\bMACD\b[^\d-]{0,28}(-?[\d,]+(?:\.\d+)?)/i);
+  if(current) stats.push({label:"현재가", value:formatNumber(current), note:"리포트 기준 가격"});
+  if(sma50) stats.push({label:"50일선", value:formatNumber(sma50), note:"중기 지지/저항"});
+  if(sma200) stats.push({label:"200일선", value:formatNumber(sma200), note:"장기 추세 기준"});
+  if(rsi) stats.push({label:"RSI", value:rsi.toFixed(rsi % 1 ? 1 : 0), note:rsi >= 70 ? "과열" : rsi <= 30 ? "침체" : "중립권"});
+  if(atr) stats.push({label:"ATR", value:formatNumber(atr), note:"일평균 변동폭"});
+  if(macd) stats.push({label:"MACD", value:formatNumber(macd), note:macd >= 0 ? "양의 모멘텀" : "음의 모멘텀"});
+  if(!stats.length && id){
+    stats.push({label:"에이전트", value:label(id), note:"상세 원문 기준"});
+  }
+  return stats;
+}
+function extractLevels(text){
+  const levels = [];
+  const add = (kind, label, regex) => {
+    const value = firstNumber(text, regex);
+    if(value) levels.push({kind, label, value});
+  };
+  add("stop","손절", /(손절가|Stop-loss)[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
+  add("support","지지", /(볼린저 밴드 하단|하단 밴드|지지선|지지대)[^\d]{0,40}([\d,]+(?:\.\d+)?)/i);
+  add("current","현재", /(현재가|종가|Close)[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
+  add("resist","저항", /(VWMA|저항대|저항선)[^\d]{0,40}([\d,]+(?:\.\d+)?)/i);
+  add("target","목표", /(목표가|Target Price|단기 목표가|중기 목표가)[^\d]{0,40}([\d,]+(?:\.\d+)?)/i);
+  const unique = [];
+  const seen = new Set();
+  for(const level of levels){
+    const key = `${level.kind}-${Math.round(level.value)}`;
+    if(!seen.has(key)){ seen.add(key); unique.push(level); }
+  }
+  return unique.sort((a,b) => a.value - b.value).slice(0,6);
+}
+function extractMeters(text){
+  const meters = [];
+  const rsi = firstNumber(text, /\bRSI\b[^\d]{0,28}([\d,]+(?:\.\d+)?)/i);
+  if(rsi) meters.push({label:"RSI", value:rsi, display:rsi.toFixed(0)});
+  const drawdown = text.match(/전고점[^\d]{0,40}대비\s*약\s*([\d.]+)%/);
+  if(drawdown) meters.push({label:"조정폭", value:Math.min(100, Number(drawdown[1]) * 3), display:`${drawdown[1]}%`});
+  const confidence = text.match(/Confidence\s*[:：-]\s*(High|Medium|Low)/i);
+  if(confidence){
+    const map = {high:86, medium:58, low:30};
+    meters.push({label:"신뢰도", value:map[confidence[1].toLowerCase()], display:confidence[1]});
+  }
+  return meters.slice(0,3);
+}
+function renderLevelMap(levels){
+  const values = levels.map(level => level.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = Math.max(1, max - min);
+  return `<div class="level-map"><h5>가격 레벨 맵</h5><div class="level-track">${levels.map(level => {
+    const left = ((level.value - min) / span) * 100;
+    return `<div class="level-point ${escapeHtml(level.kind)}" style="left:${Math.max(0, Math.min(100, left))}%"><i></i><span>${escapeHtml(level.label)}</span><em>${escapeHtml(formatNumber(level.value))}</em></div>`;
+  }).join("")}</div></div>`;
+}
+function firstNumber(text, regex){
+  const match = String(text || "").match(regex);
+  if(!match) return null;
+  const raw = match[match.length - 1];
+  const value = Number(String(raw).replace(/,/g,""));
+  return Number.isFinite(value) ? value : null;
+}
+function formatNumber(value){
+  if(value === null || value === undefined) return "";
+  return Number(value).toLocaleString("ko-KR", {maximumFractionDigits: value < 100 ? 2 : 0});
+}
+function renderMarkdown(markdown){
+  const lines = String(markdown || "").replace(/\r\n/g,"\n").split("\n");
+  const html = [];
+  let i = 0;
+  while(i < lines.length){
+    const raw = lines[i];
+    const line = raw.trim();
+    if(!line){ i++; continue; }
+    const proposal = line.match(/^FINAL TRANSACTION PROPOSAL\s*:\s*\**([^*]+)\**/i);
+    if(proposal){ html.push(`<div class="proposal">제안 ${escapeHtml(proposal[1].trim())}</div>`); i++; continue; }
+    if(/^---+$/.test(line)){ html.push("<hr>"); i++; continue; }
+    const heading = line.match(/^(#{1,4})\s+(.+)$/);
+    if(heading){
+      const level = Math.min(heading[1].length + 1, 4);
+      html.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+      i++;
+      continue;
+    }
+    if(isTableStart(lines, i)){
+      const rows = [];
+      rows.push(parseTableRow(lines[i]));
+      i += 2;
+      while(i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])){
+        rows.push(parseTableRow(lines[i]));
+        i++;
+      }
+      html.push(renderTable(rows));
+      continue;
+    }
+    if(/^\s*[-*]\s+/.test(raw)){
+      const items = [];
+      while(i < lines.length && /^\s*[-*]\s+/.test(lines[i])){
+        items.push(lines[i].replace(/^\s*[-*]\s+/,"").trim());
+        i++;
+      }
+      html.push(`<ul>${items.map(item => `<li>${inlineMarkdown(item)}</li>`).join("")}</ul>`);
+      continue;
+    }
+    if(/^\s*\d+[.)]\s+/.test(raw)){
+      const items = [];
+      while(i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])){
+        items.push(lines[i].replace(/^\s*\d+[.)]\s+/,"").trim());
+        i++;
+      }
+      html.push(`<ol>${items.map(item => `<li>${inlineMarkdown(item)}</li>`).join("")}</ol>`);
+      continue;
+    }
+    const para = [line];
+    i++;
+    while(i < lines.length && lines[i].trim() && !/^(#{1,4})\s+/.test(lines[i].trim()) && !/^\s*([-*]|\d+[.)])\s+/.test(lines[i]) && !isTableStart(lines, i)){
+      para.push(lines[i].trim());
+      i++;
+    }
+    html.push(`<p>${inlineMarkdown(para.join(" "))}</p>`);
+  }
+  return html.join("");
+}
+function isTableStart(lines, i){
+  return /^\s*\|.*\|\s*$/.test(lines[i] || "") && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[i+1] || "");
+}
+function parseTableRow(line){
+  return line.trim().replace(/^\|/,"").replace(/\|$/,"").split("|").map(cell => cell.trim());
+}
+function renderTable(rows){
+  const head = rows[0] || [];
+  const body = rows.slice(1);
+  return `<table><thead><tr>${head.map(cell => `<th>${inlineMarkdown(cell)}</th>`).join("")}</tr></thead><tbody>${body.map(row => `<tr>${row.map(cell => `<td>${inlineMarkdown(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+function inlineMarkdown(value){
+  let text = escapeHtml(value);
+  text = text.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
+  text = text.replace(/`([^`]+)`/g,"<code>$1</code>");
+  text = text.replace(/&lt;br\s*\/?&gt;/gi,"<br>");
+  return text;
+}
 function escapeHtml(value){ return String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;"); }
 init();
 </script>

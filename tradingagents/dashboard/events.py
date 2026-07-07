@@ -35,8 +35,23 @@ _BOILERPLATE_PATTERNS = (
     "fundamental analysis",
     "technical analysis",
     "comprehensive report",
+    "selected indicators",
     "target stock",
     "analysis date",
+    "overview",
+    "summary",
+    "key technical indicators",
+    "table",
+    "개요 및 요약",
+    "핵심 기술적 지표",
+    "핵심 지표",
+    "요약 테이블",
+    "상세 추세",
+    "가격 행동",
+    "실행 가능한 매매 전략",
+    "위험 관리",
+    "시장 분석을 위한",
+    "선정 이유",
     "분석 보고서",
     "종합 보고서",
     "보고서",
@@ -199,8 +214,10 @@ def _strip_claim_prefix(text: str) -> str:
 
 
 def _is_boilerplate_line(text: str) -> bool:
-    value = text.strip().lower()
+    value = re.sub(r"^\d+[.)]\s*", "", text.strip().lower())
     if len(value) < 8:
+        return True
+    if re.fullmatch(r"(buy|sell|hold|overweight|underweight)", value, flags=re.IGNORECASE):
         return True
     return any(pattern in value for pattern in _BOILERPLATE_PATTERNS)
 

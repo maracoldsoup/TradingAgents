@@ -30,7 +30,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from .symbol_utils import crypto_base
+from .symbol_utils import crypto_base, is_korean_listing
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +202,11 @@ def fetch_reddit_posts(
     stay under Reddit's public per-IP rate limit; combined with the RSS-first
     path it makes 429s rare even when several analyses run back-to-back.
     """
+    if is_korean_listing(ticker):
+        # r/stocks·r/investing don't discuss KRX codes; skipping avoids
+        # per-subreddit 429 backoffs (5s+) on every Korean-ticker run.
+        logger.info("Reddit skipped for KRX listing %s", ticker)
+        return "<reddit unavailable: not covered for KRX listings>"
     # Crypto reaches us as a Yahoo pair (BTC-USD); search Reddit for the base
     # ("BTC") so the query actually matches discussion instead of near-nothing.
     ticker = crypto_base(ticker) or ticker

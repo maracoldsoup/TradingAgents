@@ -141,3 +141,16 @@ def normalize_symbol(raw: str) -> str:
 def is_yahoo_safe(symbol: str) -> bool:
     """True when ``symbol`` only contains characters Yahoo symbols use."""
     return bool(symbol) and _YAHOO_SAFE.fullmatch(symbol) is not None
+
+
+def is_korean_listing(raw: str) -> bool:
+    """True for KRX listings: ``.KS``/``.KQ`` suffix or a bare 6-digit code.
+
+    Used to early-skip US-centric social sources (StockTwits, Reddit) that
+    have effectively zero coverage of Korean names — probing them costs
+    404s plus 429 backoff seconds on every run (observed live, 2026-07-07).
+    """
+    t = (raw or "").strip().upper()
+    if t.endswith(".KS") or t.endswith(".KQ"):
+        return True
+    return t.isdigit() and len(t) == 6

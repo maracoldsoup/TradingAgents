@@ -19,7 +19,7 @@ import json
 import logging
 from urllib.request import Request, urlopen
 
-from .symbol_utils import crypto_base
+from .symbol_utils import crypto_base, is_korean_listing
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +46,10 @@ def fetch_stocktwits_messages(ticker: str, limit: int = 30, timeout: float = 10.
     symbol has no messages, or the response shape is unexpected — the
     caller never has to special-case None or exceptions.
     """
+    if is_korean_listing(ticker):
+        # KRX names have no StockTwits stream; skip the guaranteed 404.
+        logger.info("StockTwits skipped for KRX listing %s", ticker)
+        return "<stocktwits unavailable: not covered for KRX listings>"
     url = _API.format(ticker=_stocktwits_symbol(ticker))
     req = Request(url, headers={"User-Agent": _UA, "Accept": "application/json"})
     try:

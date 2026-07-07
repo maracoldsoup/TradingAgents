@@ -234,3 +234,27 @@ def test_search_ranks_large_caps_above_alphabetical_order():
     codes = [r["code"] for r in rows]
     # 시총 상위(전자)가 가나다 컷에 밀려 사라지면 안 된다
     assert "005930" in codes[:3]
+
+
+def test_us_social_sources_skip_korean_listings(caplog):
+    """KRX 종목은 StockTwits/Reddit에 네트워크 요청 없이 즉시 스킵해야 한다."""
+    import socket
+
+    from tradingagents.dataflows.reddit import fetch_reddit_posts
+    from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
+    from tradingagents.dataflows.symbol_utils import is_korean_listing
+
+    assert is_korean_listing("005930.KS") and is_korean_listing("247540.kq")
+    assert is_korean_listing("005930") and not is_korean_listing("NVDA")
+
+    orig = socket.socket.connect
+    def _no_network(self, *a, **k):
+        raise AssertionError("network call attempted for KRX listing")
+    socket.socket.connect = _no_network
+    try:
+        st = fetch_stocktwits_messages("005930.KS")
+        rd = fetch_reddit_posts("247540.KQ")
+    finally:
+        socket.socket.connect = orig
+    assert "KRX" in st and "unavailable" in st
+    assert "KRX" in rd and "unavailable" in rd

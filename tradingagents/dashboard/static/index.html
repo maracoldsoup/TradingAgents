@@ -101,7 +101,7 @@ aside h3{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--dim);ma
 .gauge span{flex:1;height:9px;border-radius:3px;background:var(--line);position:relative}
 .gauge span.lit-up{background:var(--up)} .gauge span.lit-down{background:var(--down)} .gauge span.lit-hold{background:var(--hold)}
 .gauge-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--faint);margin-bottom:14px}
-.ladder{position:relative;height:64px;margin:14px 0 4px}
+.ladder{position:relative;height:86px;margin:14px 0 4px}
 .ladder .axis{position:absolute;left:0;right:0;top:30px;height:2px;background:var(--line)}
 .ladder .lv{position:absolute;top:0;transform:translateX(-50%);text-align:center;font-family:var(--mono);font-size:10px}
 .ladder .lv i{display:block;width:2px;height:18px;margin:12px auto 0;background:currentColor}
@@ -338,20 +338,31 @@ function drawGauge(score){
   const cls= score>0?'lit-up':(score<0?'lit-down':'lit-hold');
   for(let i=0;i<5;i++){segs[i].className = i===idx ? cls : '';}
 }
+const PRICE_KEYS=['entry','stop','target'];
 function drawLadder(levels){
-  if(!levels||Object.keys(levels).length<2) return;
+  // 가격만 사다리에 오른다 — 비중(%) 같은 스칼라가 섞이면 스케일이 무너진다
+  const prices={}; for(const k of PRICE_KEYS){ if(levels&&levels[k]!==undefined) prices[k]=levels[k]; }
+  levels=prices;
+  if(Object.keys(levels).length<2) return;
   const box=$('#ladder'); box.style.display='block';
   box.querySelectorAll('.lv').forEach(n=>n.remove());
   const vals=Object.values(levels); const mn=Math.min(...vals), mx=Math.max(...vals);
   const pad=(mx-mn)*0.12||mx*0.01;
   const pos=v=>((v-(mn-pad))/((mx+pad)-(mn-pad)))*100;
   const label={stop:'손절',entry:'진입',target:'목표'};
-  for(const [k,v] of Object.entries(levels)){
+  // 위치가 8%p 이내로 붙으면 라벨을 위/아래로 엇갈려 겹침을 피한다
+  const placed=[];
+  const sorted=Object.entries(levels).sort((a,b)=>a[1]-b[1]);
+  sorted.forEach(([k,v],i)=>{
+    const x=Math.min(94,Math.max(6,pos(v)));
+    const near=placed.some(px=>Math.abs(px-x)<8);
+    placed.push(x);
     const d=document.createElement('div'); d.className='lv '+k;
-    d.style.left=Math.min(94,Math.max(6,pos(v)))+'%';
+    d.style.left=x+'%';
+    if(near && i%2===1) d.style.top='26px';
     d.innerHTML=`${label[k]||k}<i></i><em>${v.toLocaleString()}</em>`;
     box.appendChild(d);
-  }
+  });
 }
 function drawBalance(){
   const total=bullN+bearN||1;
@@ -373,6 +384,7 @@ function drawStats(ev){
   if(L.entry!==undefined) t.push({k:'진입', v:fmt(L.entry), cls:'amber'});
   if(L.stop!==undefined) t.push({k:'손절', v:fmt(L.stop), cls:'down'});
   if(L.target!==undefined) t.push({k:'목표', v:fmt(L.target), cls:'up'});
+  if(L.position_size_pct!==undefined) t.push({k:'비중', v:L.position_size_pct+'%', cls:''});
   box.innerHTML=t.map(x=>`<div class="stat"><div class="k">${x.k}</div><div class="v ${x.cls||''}">${x.v}</div></div>`).join('');
   box.style.display='grid';
 }

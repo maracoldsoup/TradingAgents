@@ -118,3 +118,56 @@ def test_metrics_sanity():
     assert bh[-1] == 120
     sma = sma_cross_equity(list(range(100, 200)), fast=3, slow=5, initial=100)
     assert sma[-1] > 100  # 단조 상승장에서 추세 추종은 이긴다
+
+
+def test_cache_refuses_mixed_configs(tmp_path):
+    import pytest as _pytest
+
+    from tradingagents.backtest.engine import CachedSignalProvider, ConfigMismatchError
+
+    flash = {"provider": "google", "deep": "flash", "quick": "flash", "temperature": None}
+    pro = {"provider": "google", "deep": "pro", "quick": "flash", "temperature": None}
+
+    inner = ScriptedProvider({"2026-01-01": {"action": "Buy"}})
+    writer = CachedSignalProvider(inner, tmp_path, expected_meta=flash)
+    writer.get_signal("T", "2026-01-01")  # flash 지문으로 캐시 생성
+
+    reader = CachedSignalProvider(None, tmp_path, expected_meta=pro)
+    with _pytest.raises(ConfigMismatchError):
+        reader.get_signal("T", "2026-01-01")
+
+    # 명시적 허용 시에만 통과
+    mixed = CachedSignalProvider(None, tmp_path, expected_meta=pro, allow_mixed=True)
+    assert mixed.get_signal("T", "2026-01-01")["action"] == "Buy"
+
+    # 같은 지문이면 정상
+    same = CachedSignalProvider(None, tmp_path, expected_meta=flash)
+    assert same.get_signal("T", "2026-01-01")["action"] == "Buy"
+
+    # 지문 없는 구세대 캐시도 거부한다 (출처 불명 = 신뢰 불가)
+    import json as _json
+    legacy = tmp_path / "signals" / "2026-01-02.json"
+    legacy.write_text(_json.dumps({"action": "Sell"}), encoding="utf-8")
+    with _pytest.raises(ConfigMismatchError):
+        CachedSignalProvider(None, tmp_path, expected_meta=pro).get_signal("T", "2026-01-02")
+
+
+def test_trade_diagnostics_pilot_shape():
+    from tradingagents.backtest.metrics import round_trips, trade_diagnostics
+
+    trades = [
+        {"date": "d1", "side": "buy", "price": 100.0, "shares": 10, "reason": "signal_buy"},
+        {"date": "d3", "side": "sell", "price": 95.0, "shares": 10, "reason": "stop_loss"},
+        {"date": "d5", "side": "buy", "price": 100.0, "shares": 10, "reason": "signal_buy"},
+        {"date": "d7", "side": "sell", "price": 105.0, "shares": 10, "reason": "signal_sell"},
+        {"date": "d9", "side": "buy", "price": 100.0, "shares": 10, "reason": "signal_buy"},
+    ]
+    trips = round_trips(trades)
+    assert len(trips) == 2  # 마지막 미청산 매수는 왕복이 아니다
+    assert trips[0]["exit_reason"] == "stop_loss" and trips[0]["pnl_pct"] < 0
+
+    curve = [(f"d{i}", 1000.0) for i in range(1, 10)]
+    d = trade_diagnostics(trades, curve)
+    assert d["win_rate"] == 0.5
+    assert 0 < d["time_in_market_pct"] < 1
+    assert abs(d["pnl_on_deployed"] - 0.0) < 1e-9  # -5% + +5% 균등 노출 → 0

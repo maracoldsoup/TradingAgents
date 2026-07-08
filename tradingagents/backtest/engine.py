@@ -29,28 +29,80 @@ class SignalProvider(Protocol):
     def get_signal(self, ticker: str, trade_date: str) -> dict[str, Any]: ...
 
 
+def current_config_meta() -> dict[str, Any]:
+    """Fingerprint of the model configuration that produces signals.
+
+    Stored with every cached signal so a backtest can refuse to silently
+    mix signals produced under different configurations (e.g. half the
+    dates on deep=flash, half on deep=pro after an .env change).
+    """
+    from tradingagents.default_config import DEFAULT_CONFIG
+
+    return {
+        "provider": DEFAULT_CONFIG.get("llm_provider"),
+        "deep": DEFAULT_CONFIG.get("deep_think_llm"),
+        "quick": DEFAULT_CONFIG.get("quick_think_llm"),
+        "temperature": DEFAULT_CONFIG.get("temperature"),
+    }
+
+
+class ConfigMismatchError(RuntimeError):
+    """Cached signal was produced under a different model configuration."""
+
+
 class CachedSignalProvider:
     """Reads/writes signals under ``run_dir/signals/{date}.json``.
 
     Wraps an inner provider (the live pipeline); on cache hit the inner
     provider is never called. This is what makes 250-day backtests
     resumable and affordable.
+
+    Every write records a config fingerprint (``_meta``); every read
+    verifies it against ``expected_meta`` and fails loud on mismatch
+    unless ``allow_mixed=True`` — a mixed-config backtest is not a
+    backtest, it's noise with a CSV.
     """
 
-    def __init__(self, inner: SignalProvider | None, run_dir: Path):
+    def __init__(
+        self,
+        inner: SignalProvider | None,
+        run_dir: Path,
+        expected_meta: dict[str, Any] | None = None,
+        allow_mixed: bool = False,
+    ):
         self.inner = inner
         self.dir = Path(run_dir) / "signals"
         self.dir.mkdir(parents=True, exist_ok=True)
+        self.expected_meta = expected_meta
+        self.allow_mixed = allow_mixed
 
     def get_signal(self, ticker: str, trade_date: str) -> dict[str, Any]:
         path = self.dir / f"{trade_date}.json"
         if path.exists():
-            return json.loads(path.read_text(encoding="utf-8"))
+            signal = json.loads(path.read_text(encoding="utf-8"))
+            cached_meta = signal.get("_meta")
+            if not self.allow_mixed and self.expected_meta is not None:
+                if cached_meta is None:
+                    # 지문 도입 이전(또는 외부 생성) 캐시 — 출처 불명은 신뢰 불가
+                    raise ConfigMismatchError(
+                        f"{trade_date} 캐시에 구성 지문이 없습니다(지문 도입 이전 생성 "
+                        f"추정). 해당 파일을 삭제해 재생성하거나 --allow-mixed로 "
+                        f"명시적으로 허용하세요: {path}"
+                    )
+                if cached_meta != self.expected_meta:
+                    raise ConfigMismatchError(
+                        f"{trade_date} 캐시는 다른 구성으로 생성됨: cached={cached_meta} "
+                        f"current={self.expected_meta}. 캐시 폴더를 보존·개명 후 새로 "
+                        f"시작하거나 --allow-mixed로 명시적으로 허용하세요."
+                    )
+            return signal
         if self.inner is None:
             raise FileNotFoundError(
                 f"no cached signal for {trade_date} and no live provider configured"
             )
-        signal = self.inner.get_signal(ticker, trade_date)
+        signal = dict(self.inner.get_signal(ticker, trade_date))
+        if self.expected_meta is not None:
+            signal["_meta"] = self.expected_meta
         path.write_text(json.dumps(signal, ensure_ascii=False, indent=2), encoding="utf-8")
         return signal
 
@@ -59,12 +111,24 @@ class LivePipelineProvider:
     """Runs the real TradingAgents pipeline for each date (expensive)."""
 
     def get_signal(self, ticker: str, trade_date: str) -> dict[str, Any]:
+        import sys
+        from time import monotonic
+
         from tradingagents.default_config import DEFAULT_CONFIG
         from tradingagents.graph.trading_graph import TradingAgentsGraph
 
+        # 첫 시그널이 수 분 걸리는 동안 침묵하면 행업과 구분이 안 된다.
+        print(f"  [signal] {trade_date} 파이프라인 실행 중...", flush=True)
+        started = monotonic()
         graph = TradingAgentsGraph(debug=False, config=DEFAULT_CONFIG.copy())
         final_state, _ = graph.propagate(ticker, trade_date)
-        return final_state.get("final_trade_signal") or {}
+        signal = final_state.get("final_trade_signal") or {}
+        print(
+            f"  [signal] {trade_date} 완료 ({monotonic() - started:.0f}s) → "
+            f"{signal.get('rating', '?')}",
+            flush=True,
+        )
+        return signal
 
 
 @dataclass

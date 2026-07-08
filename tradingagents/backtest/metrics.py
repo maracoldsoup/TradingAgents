@@ -112,3 +112,59 @@ def sma_cross_equity(
                 signal_long = False
         equity.append(cash + shares * closes[i])
     return equity
+
+
+# ---------------------------------------------------------------------------
+# Trade diagnostics — 파일럿 1호 실측에서 필요성이 확인된 지표들
+# ---------------------------------------------------------------------------
+
+
+def round_trips(trades: list[dict]) -> list[dict]:
+    """buy→sell 쌍을 왕복 매매로 묶어 손익을 계산한다 (단일 포지션 가정)."""
+    trips: list[dict] = []
+    open_trade: dict | None = None
+    for t in trades:
+        if t["side"] == "buy":
+            open_trade = t
+        elif t["side"] == "sell" and open_trade is not None:
+            pnl_pct = t["price"] / open_trade["price"] - 1.0
+            trips.append({
+                "entry_date": open_trade["date"], "exit_date": t["date"],
+                "entry": open_trade["price"], "exit": t["price"],
+                "hold_days_approx": None,  # 날짜 산술은 러너에서
+                "pnl_pct": pnl_pct,
+                "notional": open_trade["shares"] * open_trade["price"],
+                "exit_reason": t.get("reason"),
+            })
+            open_trade = None
+    return trips
+
+
+def trade_diagnostics(trades: list[dict], equity_curve: list[tuple[str, float]]) -> dict:
+    """노출·체류·승률 진단. 절대수익률만 보면 소액 베팅 전략이 무능해 보인다."""
+    trips = round_trips(trades)
+    wins = [t for t in trips if t["pnl_pct"] > 0]
+    # 시장 체류일: buy~sell 구간의 equity 곡선 날짜 수로 근사
+    dates = [d for d, _ in equity_curve]
+    in_market = 0
+    holding = False
+    ti = 0
+    for d, _ in equity_curve:
+        while ti < len(trades) and trades[ti]["date"] <= d:
+            holding = trades[ti]["side"] == "buy"
+            ti += 1
+        if holding:
+            in_market += 1
+    avg_notional = (
+        sum(t["notional"] for t in trips) / len(trips) if trips else 0.0
+    )
+    initial = equity_curve[0][1] if equity_curve else 0.0
+    deployed_pnl = sum(t["pnl_pct"] * t["notional"] for t in trips)
+    return {
+        "round_trips": trips,
+        "win_rate": len(wins) / len(trips) if trips else None,
+        "time_in_market_pct": in_market / len(dates) if dates else None,
+        "avg_position_pct_of_initial": (avg_notional / initial) if initial else None,
+        "pnl_on_deployed": (deployed_pnl / sum(t["notional"] for t in trips))
+        if trips else None,
+    }

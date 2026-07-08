@@ -61,6 +61,9 @@ def main() -> None:
                         help="구성 지문 불일치 캐시 허용 (실험 오염 감수 — 비권장)")
     parser.add_argument("--cached-only", action="store_true",
                         help="캐시된 시그널만 사용 (LLM 호출 금지)")
+    parser.add_argument("--fixed-size", type=float, default=None, metavar="PCT",
+                        help="모든 진입 비중을 이 값(%%)으로 강제 — 시그널 비중 무시. "
+                             "방향 판단력과 비중 정책을 분리 측정할 때 사용")
     parser.add_argument("--size-pct", type=float, default=5.0,
                         help="시그널에 비중이 없을 때 기본 비중(%%)")
     args = parser.parse_args()
@@ -95,6 +98,7 @@ def main() -> None:
 
     result = run_backtest(
         bars, provider, args.ticker, default_size_pct=args.size_pct,
+        size_override_pct=args.fixed_size,
         on_day=lambda d, eq: print(f"  {d}  equity {eq:,.0f}"),
     )
 
@@ -102,6 +106,9 @@ def main() -> None:
     bench = load_benchmark_closes(args.ticker, args.start, args.end)
     diag = trade_diagnostics(result.trades, result.equity_curve)
     summary = {
+        "sizing_mode": (
+            f"fixed {args.fixed_size}%" if args.fixed_size is not None else "signal-driven"
+        ),
         "strategy": summarize(result.equity_curve, benchmark_closes=bench or None),
         "diagnostics": {k: v for k, v in diag.items() if k != "round_trips"},
         "buy_and_hold": summarize(
@@ -132,6 +139,8 @@ def main() -> None:
         alpha = s.get("alpha_vs_benchmark")
         alpha_txt = f"  α {alpha:+.1%}" if alpha is not None else ""
         print(f"{name:>14}: CR {s['cumulative_return']:+.1%}  SR {sr}  MDD {s['max_drawdown']:.1%}{alpha_txt}")
+    if args.fixed_size is not None:
+        print(f"※ 비중 강제 고정 {args.fixed_size}% — 시그널의 position_size_pct 무시됨")
     d = summary["diagnostics"]
     wr = f"{d['win_rate']:.0%}" if d.get("win_rate") is not None else "n/a"
     tim = f"{d['time_in_market_pct']:.0%}" if d.get("time_in_market_pct") is not None else "n/a"

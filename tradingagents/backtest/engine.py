@@ -188,6 +188,7 @@ def run_backtest(
     ticker: str,
     initial_cash: float = 100_000_000.0,
     default_size_pct: float = 5.0,
+    size_override_pct: float | None = None,
     cost_model: CostModel | None = None,
     on_day: Callable[[str, float], None] | None = None,
 ) -> BacktestResult:
@@ -196,6 +197,9 @@ def run_backtest(
     Timing model per day i:
       1. If a stop was armed and today's low pierces it → exit at stop price.
       2. Execute yesterday's signal at today's OPEN (no lookahead).
+         ``size_override_pct`` forces every entry to that size, ignoring the
+         signal's own sizing — used to separate directional skill from the
+         committee's sizing timidity (pilot #2: 77% win rate at 3.5% size).
       3. After close, request the signal for today (it will act tomorrow).
     """
     costs = cost_model or CostModel()
@@ -233,7 +237,11 @@ def run_backtest(
             if mode == "exit":
                 sell_all(bar.open, bar.date, "signal_sell")
             elif mode == "enter" and shares == 0:
-                size_pct = levels.get("position_size_pct") or default_size_pct
+                size_pct = (
+                    size_override_pct
+                    if size_override_pct is not None
+                    else levels.get("position_size_pct") or default_size_pct
+                )
                 budget = equity(bar.open) * (size_pct / 100.0)
                 price = bar.open
                 # 예산은 비용 포함 총지출 기준: notional*(1+비용률) ≤ budget.

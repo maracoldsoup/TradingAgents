@@ -213,3 +213,20 @@ def test_format_position_context_facts_only():
     # 모르는 값은 서술하지 않는다
     partial = format_position_context({"shares": 5})
     assert "P&L" not in partial and "entered at" not in partial
+
+
+def test_size_override_ignores_signal_sizing():
+    bars = _bars([100, 100, 110, 110])
+    provider = ScriptedProvider({
+        "2026-01-01": {"action": "Buy", "levels": {"position_size_pct": 3}},
+    })
+    res = run_backtest(bars, provider, "TEST", initial_cash=1_000_000,
+                       size_override_pct=100, cost_model=CostModel(0, 0, 0))
+    buy = [t for t in res.trades if t["side"] == "buy"][0]
+    # 시그널은 3%라 했지만 100%로 강제 → 전액 투입
+    assert abs(buy["shares"] * buy["price"] - 1_000_000) < 1
+    # 오버라이드 미지정이면 시그널 비중 존중 (기존 동작 보존)
+    res2 = run_backtest(bars, provider, "TEST", initial_cash=1_000_000,
+                        cost_model=CostModel(0, 0, 0))
+    buy2 = [t for t in res2.trades if t["side"] == "buy"][0]
+    assert abs(buy2["shares"] * buy2["price"] - 30_000) < 1

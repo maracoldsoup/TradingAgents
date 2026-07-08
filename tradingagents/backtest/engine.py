@@ -26,7 +26,9 @@ from typing import Any, Callable, Protocol
 class SignalProvider(Protocol):
     """Returns a signal dict (signal.json shape) for one ticker/date."""
 
-    def get_signal(self, ticker: str, trade_date: str) -> dict[str, Any]: ...
+    def get_signal(
+        self, ticker: str, trade_date: str, position: dict[str, Any] | None = None
+    ) -> dict[str, Any]: ...
 
 
 def current_config_meta() -> dict[str, Any]:
@@ -76,7 +78,9 @@ class CachedSignalProvider:
         self.expected_meta = expected_meta
         self.allow_mixed = allow_mixed
 
-    def get_signal(self, ticker: str, trade_date: str) -> dict[str, Any]:
+    def get_signal(
+        self, ticker: str, trade_date: str, position: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         path = self.dir / f"{trade_date}.json"
         if path.exists():
             signal = json.loads(path.read_text(encoding="utf-8"))
@@ -100,7 +104,7 @@ class CachedSignalProvider:
             raise FileNotFoundError(
                 f"no cached signal for {trade_date} and no live provider configured"
             )
-        signal = dict(self.inner.get_signal(ticker, trade_date))
+        signal = dict(self.inner.get_signal(ticker, trade_date, position=position))
         if self.expected_meta is not None:
             signal["_meta"] = self.expected_meta
         path.write_text(json.dumps(signal, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -110,7 +114,9 @@ class CachedSignalProvider:
 class LivePipelineProvider:
     """Runs the real TradingAgents pipeline for each date (expensive)."""
 
-    def get_signal(self, ticker: str, trade_date: str) -> dict[str, Any]:
+    def get_signal(
+        self, ticker: str, trade_date: str, position: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         import sys
         from time import monotonic
 
@@ -121,7 +127,7 @@ class LivePipelineProvider:
         print(f"  [signal] {trade_date} 파이프라인 실행 중...", flush=True)
         started = monotonic()
         graph = TradingAgentsGraph(debug=False, config=DEFAULT_CONFIG.copy())
-        final_state, _ = graph.propagate(ticker, trade_date)
+        final_state, _ = graph.propagate(ticker, trade_date, position=position)
         signal = final_state.get("final_trade_signal") or {}
         print(
             f"  [signal] {trade_date} 완료 ({monotonic() - started:.0f}s) → "
@@ -252,7 +258,18 @@ def run_backtest(
         # 3) 오늘 종가 이후의 시그널 생성 (내일 집행)
         is_last = i == len(bars) - 1
         if not is_last:
-            signal = provider.get_signal(ticker, bar.date)
+            current_position = (
+                {
+                    "shares": shares,
+                    "entry_price": result.trades[-1]["price"] if shares > 0 and result.trades else None,
+                    "entry_date": result.trades[-1]["date"] if shares > 0 and result.trades else None,
+                    "current_price": bar.close,
+                    "stop": armed_stop,
+                }
+                if shares > 0
+                else {"shares": 0}
+            )
+            signal = provider.get_signal(ticker, bar.date, position=current_position)
             result.daily_signals.append({"date": bar.date, **signal})
             pending = signal
 

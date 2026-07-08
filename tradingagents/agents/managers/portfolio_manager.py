@@ -32,6 +32,8 @@ def create_portfolio_manager(llm):
         risk_debate_state = state["risk_debate_state"]
         research_plan = state["investment_plan"]
         trader_plan = state["trader_investment_plan"]
+        position_context = state.get("position_context", "")
+        position_line = f"- {position_context}\n" if position_context else ""
 
         past_context = state.get("past_context", "")
         lessons_line = (
@@ -54,7 +56,7 @@ def create_portfolio_manager(llm):
 - **Sell**: Exit position or avoid entry
 
 **Context:**
-- Research Manager's investment plan: **{research_plan}**
+{position_line}- Research Manager's investment plan: **{research_plan}**
 - Trader's transaction proposal: **{trader_plan}**
 {lessons_line}
 **Risk Analysts Debate History:**

@@ -51,6 +51,11 @@ class AgentState(MessagesState):
     trade_date: Annotated[str, "What date we are trading at"]
 
     sender: Annotated[str, "Agent that sent this message"]
+    position_context: Annotated[
+        str,
+        "Current holding description injected by the caller (backtest/live). "
+        'Empty string means flat/no position information.',
+    ]
     analyst_telemetry: Annotated[
         dict, "Per-analyst wall-seconds / tool-call counts (parallel mode)"
     ]

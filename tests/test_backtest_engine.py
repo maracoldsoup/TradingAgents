@@ -36,8 +36,9 @@ class ScriptedProvider:
         self.signals = signals
         self.calls = 0
 
-    def get_signal(self, ticker, trade_date):
+    def get_signal(self, ticker, trade_date, position=None):
         self.calls += 1
+        self.last_position = position
         return self.signals.get(trade_date, {"action": "Hold"})
 
 
@@ -171,3 +172,44 @@ def test_trade_diagnostics_pilot_shape():
     assert d["win_rate"] == 0.5
     assert 0 < d["time_in_market_pct"] < 1
     assert abs(d["pnl_on_deployed"] - 0.0) < 1e-9  # -5% + +5% 균등 노출 → 0
+
+
+def test_engine_passes_position_to_provider():
+    """포지션 인지: 보유 중엔 보유 사실이, 무보유엔 flat이 프로바이더로 전달된다."""
+    bars = _bars([100, 100, 100, 100])
+    provider = ScriptedProvider({
+        "2026-01-01": {"action": "Buy", "levels": {"position_size_pct": 50, "stop": 90}},
+        "2026-01-02": {"action": "Hold"},
+    })
+    positions_seen = []
+    orig = provider.get_signal
+    def spy(ticker, trade_date, position=None):
+        positions_seen.append((trade_date, position))
+        return orig(ticker, trade_date, position)
+    provider.get_signal = spy
+
+    run_backtest(bars, provider, "TEST", initial_cash=1_000_000,
+                 cost_model=CostModel(0, 0, 0))
+
+    d1 = dict(positions_seen)["2026-01-01"]
+    assert d1 == {"shares": 0}  # 첫날: 무보유는 명시적 flat
+    d2 = dict(positions_seen)["2026-01-02"]
+    assert d2["shares"] > 0 and d2["entry_price"] == 100 and d2["stop"] == 90
+    assert d2["current_price"] == 100
+
+
+def test_format_position_context_facts_only():
+    from tradingagents.graph.position import format_position_context
+
+    assert format_position_context(None) == ""
+    flat = format_position_context({"shares": 0})
+    assert "FLAT" in flat
+
+    ctx = format_position_context({
+        "shares": 10, "entry_price": 100.0, "current_price": 110.0,
+        "entry_date": "2026-01-02", "stop": 95.0,
+    })
+    assert "LONG 10 shares" in ctx and "+10.0%" in ctx and "95" in ctx
+    # 모르는 값은 서술하지 않는다
+    partial = format_position_context({"shares": 5})
+    assert "P&L" not in partial and "entered at" not in partial

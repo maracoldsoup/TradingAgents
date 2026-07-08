@@ -25,6 +25,7 @@ def create_trader(llm):
         company_name = state["company_of_interest"]
         instrument_context = get_instrument_context_from_state(state)
         investment_plan = state["investment_plan"]
+        position_context = state.get("position_context", "")
 
         messages = [
             {
@@ -44,7 +45,8 @@ def create_trader(llm):
                     f"insights from current technical market trends, macroeconomic indicators, and "
                     f"social media sentiment. Use this plan as a foundation for evaluating your next "
                     f"trading decision.\n\nProposed Investment Plan: {investment_plan}\n\n"
-                    f"Leverage these insights to make an informed and strategic decision."
+                    + (f"{position_context}\n\n" if position_context else "")
+                    + f"Leverage these insights to make an informed and strategic decision."
                 ),
             },
         ]

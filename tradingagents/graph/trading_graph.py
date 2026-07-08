@@ -37,6 +37,7 @@ from tradingagents.reporting import write_report_tree
 from .checkpointer import checkpoint_step, clear_checkpoint, get_checkpointer, thread_id
 from .conditional_logic import ConditionalLogic
 from .propagation import Propagator
+from .position import format_position_context
 from .reflection import Reflector
 from .setup import GraphSetup
 from .signal_processing import SignalProcessor, normalize_trade_signal
@@ -360,7 +361,7 @@ class TradingAgentsGraph:
             f"asset={asset_type}",
         ])
 
-    def propagate(self, company_name, trade_date, asset_type: str = "stock", on_chunk=None):
+    def propagate(self, company_name, trade_date, asset_type: str = "stock", on_chunk=None, position: dict | None = None):
         """Run the trading agents graph for a company on a specific date.
 
         ``asset_type`` selects between the stock pipeline (default) and the
@@ -396,7 +397,8 @@ class TradingAgentsGraph:
 
         try:
             return self._run_graph(
-                company_name, trade_date, asset_type=asset_type, on_chunk=on_chunk
+                company_name, trade_date, asset_type=asset_type, on_chunk=on_chunk,
+                position=position,
             )
         finally:
             if self._checkpointer_ctx is not None:
@@ -419,7 +421,7 @@ class TradingAgentsGraph:
             )
         return write_report_tree(final_state, ticker, save_path)
 
-    def _run_graph(self, company_name, trade_date, asset_type: str = "stock", on_chunk=None):
+    def _run_graph(self, company_name, trade_date, asset_type: str = "stock", on_chunk=None, position: dict | None = None):
         """Execute the graph and write the resulting state to disk and memory log."""
         # Initialize state — inject memory log context for PM and the
         # deterministically resolved instrument identity for all agents.
@@ -432,6 +434,7 @@ class TradingAgentsGraph:
             past_context=past_context,
             instrument_context=instrument_context,
         )
+        init_agent_state["position_context"] = format_position_context(position)
         args = self.propagator.get_graph_args()
 
         # Inject thread_id so same ticker+date+graph-shape resumes; a different

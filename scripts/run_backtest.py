@@ -125,7 +125,8 @@ def main() -> None:
 
     print("\n" + "=" * 62)
     for name, s in summary.items():
-        if not isinstance(s, dict):
+        # 성과 요약 dict만 출력 (diagnostics 같은 비-성과 dict 제외)
+        if not isinstance(s, dict) or "cumulative_return" not in s:
             continue
         sr = f"{s['sharpe']:.2f}" if s.get("sharpe") is not None else "n/a"
         alpha = s.get("alpha_vs_benchmark")

@@ -76,6 +76,27 @@ def test_build_breaking_items_quotes_toss_ranking_without_recomputing():
 
 
 @pytest.mark.unit
+def test_build_breaking_items_headline_prefers_resolved_stock_name():
+    snapshot = _rankings_snapshot(stock_names={
+        "KR": {"005930": "삼성전자"},
+        "US": {},
+    })
+
+    items = build_breaking_items(snapshot, generated_at=datetime(2026, 7, 10, 9, 30))
+    by_ticker = {item["ticker"]: item for item in items}
+
+    kr = by_ticker["005930"]
+    assert kr["name"] == "삼성전자"
+    assert "삼성전자 급등 1위" == kr["headline_ko"]
+
+    # Toss didn't resolve TSLA in this fixture — falls back to the bare
+    # symbol rather than fabricating a name.
+    us = by_ticker["TSLA"]
+    assert us["name"] is None
+    assert us["headline_ko"].startswith("TSLA")
+
+
+@pytest.mark.unit
 def test_build_breaking_items_ticker_has_no_fabricated_suffix():
     # Toss rankings don't distinguish KOSPI/KOSDAQ, so we must not guess
     # a .KS/.KQ suffix onto the raw symbol.

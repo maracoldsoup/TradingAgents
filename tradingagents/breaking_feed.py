@@ -96,7 +96,13 @@ def _headline_ko(symbol: str, primary: dict[str, Any]) -> str:
     label = _TYPE_LABEL_KO.get(ranking_type, ranking_type or "랭킹 등장")
     rank = primary.get("rank")
     rank_part = f" {rank}위" if rank else ""
-    return f"{symbol} {label}{rank_part}"
+    # Prefer Toss's own 종목명 over the bare code — "폴라플러스 급등 14위"
+    # reads like a product, "005360 급등 14위" reads like raw data. Falls
+    # back to the symbol when Toss's /api/v1/stocks lookup didn't resolve it
+    # (never fabricated).
+    name = primary.get("name")
+    display = str(name) if name else symbol
+    return f"{display} {label}{rank_part}"
 
 
 def _summary_ko(primary: dict[str, Any]) -> str:
@@ -146,6 +152,7 @@ def build_breaking_items(
         items.append({
             "id": _breaking_id(market, symbol, generated_at),
             "ticker": symbol,
+            "name": primary.get("name"),
             "market": market,
             "kind": "stock",
             "headline_ko": _headline_ko(symbol, primary),

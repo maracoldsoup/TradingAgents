@@ -71,6 +71,28 @@ def _ranking_rows(result: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _stock_names(get: ReadOnlyGetter, symbols: list[str]) -> dict[str, str]:
+    """Resolve symbol -> 종목명 via /api/v1/stocks. Best-effort: a failed or
+    partial lookup just means some headlines fall back to the bare symbol,
+    never a fabricated name."""
+    if not symbols:
+        return {}
+    probe = get("/api/v1/stocks", {"symbols": ",".join(symbols)})
+    if not probe.get("ok"):
+        return {}
+    result = _result(probe)
+    rows = result if isinstance(result, list) else []
+    names: dict[str, str] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        symbol = row.get("symbol")
+        name = row.get("name")
+        if symbol and name:
+            names[str(symbol)] = str(name)
+    return names
+
+
 def _live_getter(env: Mapping[str, str], timeout: float) -> ReadOnlyGetter:
     token_response = issue_access_token(env, timeout=timeout)
     access_token = token_response.get("access_token")
@@ -131,10 +153,13 @@ def collect_toss_rankings_snapshot(
 
     count = min(max(int(count), 1), 100)
 
+    stock_names: dict[str, dict[str, str]] = {}
+
     for market_country in market_countries:
         rankings[market_country] = {}
         ranked_at[market_country] = {}
         coverage[market_country] = {}
+        market_symbols: set[str] = set()
         for ranking_type in ranking_types:
             params = {
                 "type": ranking_type,
@@ -158,6 +183,11 @@ def collect_toss_rankings_snapshot(
                 result.get("rankedAt") if isinstance(result, dict) else None
             )
             coverage[market_country][ranking_type] = bool(rows)
+            market_symbols.update(str(row.get("symbol")) for row in rows if row.get("symbol"))
+
+        # Toss caps /api/v1/stocks at a reasonable batch size in practice;
+        # keeping it to symbols actually ranked this run keeps the call small.
+        stock_names[market_country] = _stock_names(get, sorted(market_symbols))
 
     return {
         "schema_version": 1,
@@ -170,6 +200,7 @@ def collect_toss_rankings_snapshot(
         "ranking_types": list(ranking_types),
         "rankings": rankings,
         "ranked_at": ranked_at,
+        "stock_names": stock_names,
         "coverage": coverage,
         "rate_limits": rate_limits,
         "errors": errors,
@@ -190,17 +221,21 @@ def notable_symbols(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
     """
     rows: list[dict[str, Any]] = []
     rankings = snapshot.get("rankings") if isinstance(snapshot.get("rankings"), dict) else {}
+    stock_names = snapshot.get("stock_names") if isinstance(snapshot.get("stock_names"), dict) else {}
     for market_country, by_type in rankings.items():
         if not isinstance(by_type, dict):
             continue
+        market_names = stock_names.get(market_country) if isinstance(stock_names.get(market_country), dict) else {}
         for ranking_type, ranking_rows in by_type.items():
             if not isinstance(ranking_rows, list):
                 continue
             for row in ranking_rows:
                 if not isinstance(row, dict) or not row.get("symbol"):
                     continue
+                symbol = str(row.get("symbol"))
                 rows.append({
-                    "symbol": str(row.get("symbol")),
+                    "symbol": symbol,
+                    "name": market_names.get(symbol),
                     "market_country": market_country,
                     "ranking_type": ranking_type,
                     "rank": row.get("rank"),

@@ -29,6 +29,8 @@ def test_collect_toss_rankings_snapshot_batches_market_and_type():
     def getter(path, params=None):
         calls.append((path, dict(params or {})))
         params = params or {}
+        if path == "/api/v1/stocks":
+            return _ok([{"symbol": "005930", "name": "삼성전자"}])
         if params.get("marketCountry") == "KR" and params.get("type") == "TOP_GAINERS":
             return _ok(_ranking_result([
                 {"rank": 1, "symbol": "005930", "currency": "KRW",
@@ -53,7 +55,10 @@ def test_collect_toss_rankings_snapshot_batches_market_and_type():
     assert snapshot["coverage"]["KR"]["TOP_LOSERS"] is False
     assert snapshot["coverage"]["US"]["TOP_GAINERS"] is False
     assert snapshot["errors"] == []
-    assert len(calls) == 4
+    assert snapshot["stock_names"]["KR"] == {"005930": "삼성전자"}
+    assert snapshot["stock_names"]["US"] == {}
+    # 4 ranking calls + 1 /api/v1/stocks call for KR only (US had no ranked symbols)
+    assert len(calls) == 5
     assert (
         "/api/v1/rankings",
         {
@@ -107,6 +112,27 @@ def test_collect_toss_rankings_snapshot_rejects_unknown_type():
 
 
 @pytest.mark.unit
+def test_collect_toss_rankings_snapshot_tolerates_failed_stock_lookup():
+    def getter(path, params=None):
+        if path == "/api/v1/stocks":
+            return {"ok": False, "status": 500, "stage": "read_only_get", "body": "boom"}
+        if params.get("type") == "TOP_GAINERS":
+            return _ok(_ranking_result([{"rank": 1, "symbol": "005930", "currency": "KRW"}]))
+        return _ok(_ranking_result([]))
+
+    snapshot = collect_toss_rankings_snapshot(
+        env={},
+        market_countries=("KR",),
+        ranking_types=("TOP_GAINERS",),
+        getter=getter,
+    )
+
+    # A failed name lookup never fabricates a name — just comes back empty.
+    assert snapshot["stock_names"]["KR"] == {}
+    assert snapshot["coverage"]["KR"]["TOP_GAINERS"] is True
+
+
+@pytest.mark.unit
 def test_notable_symbols_flattens_rankings_without_recomputing():
     snapshot = {
         "rankings": {
@@ -124,7 +150,11 @@ def test_notable_symbols_flattens_rankings_without_recomputing():
                 ],
                 "TOP_LOSERS": [],
             },
-        }
+        },
+        "stock_names": {
+            "KR": {"005930": "삼성전자"},
+            "US": {},
+        },
     }
 
     rows = notable_symbols(snapshot)
@@ -134,3 +164,7 @@ def test_notable_symbols_flattens_rankings_without_recomputing():
     assert kr_row["market_country"] == "KR"
     assert kr_row["ranking_type"] == "TOP_GAINERS"
     assert kr_row["rank"] == 1
+    assert kr_row["name"] == "삼성전자"
+
+    us_row = next(row for row in rows if row["symbol"] == "NVDA")
+    assert us_row["name"] is None

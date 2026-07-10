@@ -8,6 +8,18 @@ services:
     tty: true
     stdin_open: true
 
+  research-gateway:
+    build: .
+    command: ["serve", "--port", "8653", "--rankings-snapshot-dir", "/home/appuser/app/.pilot/toss_rankings"]
+    env_file:
+      - .env
+    environment:
+      - RESEARCH_GATEWAY_API_KEY=${RESEARCH_GATEWAY_API_KEY:-}
+    volumes:
+      - research_gateway_pilot:/home/appuser/app/.pilot
+    ports:
+      - "8653:8653"
+
   ollama:
     image: ollama/ollama:latest
     volumes:
@@ -33,4 +45,5 @@ services:
 
 volumes:
   tradingagents_data:
+  research_gateway_pilot:
   ollama_data:

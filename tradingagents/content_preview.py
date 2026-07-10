@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
 import html
-import json
 from pathlib import Path
 from typing import Any
 
@@ -26,10 +26,8 @@ def _num(value: Any) -> float | None:
 
 def _ticker_candidates(ticker: str) -> list[str]:
     candidates = [str(ticker or "").strip().upper()]
-    try:
+    with contextlib.suppress(ValueError):
         candidates.append(normalize_toss_symbol(ticker))
-    except ValueError:
-        pass
     seen = set()
     result = []
     for candidate in candidates:

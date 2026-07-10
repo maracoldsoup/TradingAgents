@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.content_snapshot import build_content_snapshot
+from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.reporting import build_analysis_snapshot, write_report_tree
 
 

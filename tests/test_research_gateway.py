@@ -160,6 +160,112 @@ def test_research_gateway_routes_assets_and_reviews(tmp_path):
 
 
 @pytest.mark.unit
+def test_research_gateway_background_jobs_off_by_default(tmp_path):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    config = _config(tmp_path)
+    _seed(tmp_path, config)
+
+    with TestClient(create_app(config)) as client:
+        response = client.get("/healthz")
+        assert response.status_code == 200
+
+    # No rankings snapshot dir should have been created — the job never ran.
+    assert not config.rankings_snapshot_dir.exists()
+
+
+@pytest.mark.unit
+def test_research_gateway_background_jobs_dont_crash_app_on_job_failure(tmp_path):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    config = ServiceApiConfig(
+        asset_dirs=(tmp_path / "assets",),
+        candidate_queue_path=tmp_path / "ops" / "candidate_queue.json",
+        candidate_gap_path=tmp_path / "ops" / "candidate_gap.json",
+        candidate_review_path=tmp_path / "ops" / "candidate_input_review.json",
+        assessment_path=tmp_path / "ops" / "pilot_assessment.json",
+        rankings_snapshot_dir=tmp_path / "toss_rankings",
+        enable_background_jobs=True,
+        rankings_poll_interval_seconds=0.02,
+    )
+    _seed(tmp_path, config)
+
+    # No Toss credentials configured: the job will fail on every tick. The
+    # app must start and serve requests anyway — startup/shutdown must not
+    # hang or raise even though the background job never succeeds.
+    with TestClient(create_app(config)) as client:
+        response = client.get("/healthz")
+        assert response.status_code == 200
+
+
+@pytest.mark.unit
+def test_research_gateway_healthz_is_always_public(tmp_path):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    config = ServiceApiConfig(
+        asset_dirs=(tmp_path / "assets",),
+        api_key="secret-token",
+    )
+    client = TestClient(create_app(config))
+
+    response = client.get("/healthz")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+@pytest.mark.unit
+def test_research_gateway_api_routes_open_without_api_key_configured(tmp_path):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    config = _config(tmp_path)
+    _seed(tmp_path, config)
+    client = TestClient(create_app(config))
+
+    response = client.get("/api/assets")
+
+    assert response.status_code == 200
+
+
+@pytest.mark.unit
+def test_research_gateway_api_routes_require_bearer_token_when_configured(tmp_path):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    config = ServiceApiConfig(
+        asset_dirs=(tmp_path / "assets",),
+        candidate_queue_path=tmp_path / "ops" / "candidate_queue.json",
+        candidate_gap_path=tmp_path / "ops" / "candidate_gap.json",
+        candidate_review_path=tmp_path / "ops" / "candidate_input_review.json",
+        assessment_path=tmp_path / "ops" / "pilot_assessment.json",
+        rankings_snapshot_dir=tmp_path / "toss_rankings",
+        api_key="secret-token",
+    )
+    _seed(tmp_path, config)
+    client = TestClient(create_app(config))
+
+    missing = client.get("/api/assets")
+    assert missing.status_code == 401
+
+    wrong = client.get("/api/assets", headers={"Authorization": "Bearer nope"})
+    assert wrong.status_code == 401
+
+    malformed = client.get("/api/assets", headers={"Authorization": "secret-token"})
+    assert malformed.status_code == 401
+
+    ok = client.get("/api/assets", headers={"Authorization": "Bearer secret-token"})
+    assert ok.status_code == 200
+
+    # HTML routes stay public even with an api_key configured.
+    html_route = client.get("/")
+    assert html_route.status_code == 200
+
+
+@pytest.mark.unit
 def test_research_gateway_api_breaking_with_no_snapshot_yet(tmp_path):
     pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient

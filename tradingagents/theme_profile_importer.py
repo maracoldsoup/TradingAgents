@@ -11,7 +11,6 @@ from typing import Any
 
 from tradingagents.content_profiles import normalize_theme_profile
 
-
 _COLUMN_ALIASES = {
     "stage": ("stage", "value chain stage", "밸류체인", "단계", "구간"),
     "description": ("description", "stage description", "설명", "단계 설명"),
@@ -149,7 +148,7 @@ def import_theme_profile(
 ) -> dict[str, Any]:
     """Build a normalized theme profile from a local CSV/JSON map file."""
     rows = load_theme_rows(theme_map_path)
-    stages: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
+    stages: OrderedDict[str, dict[str, Any]] = OrderedDict()
     domestic_names: list[dict[str, Any]] = []
     global_names: list[dict[str, Any]] = []
     catalysts: list[str] = []

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import json
 from collections import Counter
@@ -36,10 +37,8 @@ def _content_type(value: Any) -> str:
 
 def _ticker_aliases(ticker: str) -> set[str]:
     aliases = {_clean(ticker).upper()}
-    try:
+    with contextlib.suppress(ValueError):
         aliases.add(normalize_toss_symbol(ticker))
-    except ValueError:
-        pass
     return {alias for alias in aliases if alias}
 
 

@@ -10,7 +10,6 @@ from typing import Any
 
 from tradingagents.content_profiles import normalize_etf_profile
 
-
 _COLUMN_ALIASES = {
     "ticker": ("ticker", "symbol", "holding ticker", "security ticker", "종목코드", "티커"),
     "name": ("name", "holding name", "security name", "company", "종목명", "이름"),

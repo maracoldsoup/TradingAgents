@@ -12,10 +12,10 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
-
+from typing import Any
 
 API_KEY_ENV = "TOSS_SECURITIES_API_KEY"
 SECRET_KEY_ENV = "TOSS_SECURITIES_SECRET_KEY"

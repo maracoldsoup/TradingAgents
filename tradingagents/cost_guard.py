@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
-
+from typing import Any
 
 LOW_COST_PROVIDERS = {"ollama", "openai_compatible"}
 KEYLESS_PROVIDERS = {"ollama"}

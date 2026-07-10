@@ -358,10 +358,23 @@ Auth, Community(게시글/댓글), League(게임화), 푸시(`send-notifications
 2. `research_gateway.py`에 `/api/breaking` 라우트 추가. 기존
    `/api/assets`, `/api/themes`, `/api/reviews`, `/api/ops/status` 패턴을
    그대로 따라간다 (`schema_version`, `artifact` 필드 포함).
-3. `research_gateway` 배포: 현재 기본값은 `127.0.0.1:8653`이라 로컬 전용이다.
-   Supabase Edge Function이 주기적으로 당겨오려면 공개적으로 (또는 VPN/사설
-   네트워크로) 도달 가능한 곳에 떠 있어야 한다. 인증은 최소 API 키 헤더
-   하나로 시작한다.
+3. `research_gateway` 배포: **완료.** GCP e2-micro Always Free($0/월 영구)
+   + Cloudflare Tunnel(무료, 포트 개방 없이 HTTPS). Fly.io(~$3-4/월)와
+   Oracle Cloud Always Free(2026-06에 무예고로 한도 절반 축소, 리전 용량
+   부족 사례 흔함)도 검토했으나 비용과 안정성 둘 다에서 GCP+Cloudflare가
+   우위였다. 배포 순서는 `docs/deploy_research_gateway.md` 참고.
+   - `/api/*` 데이터 라우트에 Bearer API 키 인증 추가 (`RESEARCH_GATEWAY_API_KEY`
+     미설정 시 인증 비활성 — 로컬 개발 기본값). HTML 라우트는 계속 공개.
+   - `/healthz` 라이브니스 라우트 추가.
+   - Toss 랭킹 수집을 별도 크론이 아니라 `tradingagents/scheduler.py`
+     (asyncio 인프로세스 스케줄러)로 FastAPI 프로세스 안에서 5분 간격
+     실행하도록 구현 (`--enable-background-jobs`). Render/Railway의 자체
+     Cron 상품이 실행 서비스와 디스크를 공유 못 하는 문제를 플랫폼
+     무관하게 피하는 선택.
+   - `docker/entrypoint.sh`로 한 이미지가 `serve`(FastAPI)와
+     `collect-rankings`/`build-queue`/`analyze-gap`(1회성) 두 모드를 다
+     처리하도록 함. 인자 없이 실행하면 기존 `tradingagents` CLI 그대로
+     동작 — `docker-compose.yml`의 기존 서비스는 안 건드림.
 4. `POST /api/analyze` 라우트 추가: `{ticker, kind, depth}` (`depth`는
    `"light"` 또는 `"deep"`)를 받아 TradingAgents 파이프라인 실행을 큐에 넣고
    `{status: "queued", request_id}`를 반환한다. `depth=light`는
@@ -377,7 +390,10 @@ Auth, Community(게시글/댓글), League(게임화), 푸시(`send-notifications
 
 1. `research_gateway.py`에 `/api/breaking` 추가하고 로컬에서 `run_service_api.py`로
    더미 데이터 확인.
-2. `research_gateway` 배포 위치 확정 (내부망/공개 서버) + API 키 발급.
+2. `research_gateway` 배포 위치 확정: **완료.** `docs/deploy_research_gateway.md`
+   대로 GCP e2-micro + Cloudflare Tunnel에 직접 배포하고 API 키를 Supabase
+   Edge Function 시크릿에 등록하는 것만 남았다 (계정 생성·실제 배포 실행은
+   사람이 해야 하는 단계).
 3. aimyticker에 `sync-research-feed` Edge Function 작성, `research_cards` 테이블
    마이그레이션 추가.
 4. `Feed.tsx`에 `ResearchCard` 컴포넌트와 인터리브 로직 추가 (기존 뉴스 카드
@@ -399,11 +415,13 @@ Auth, Community(게시글/댓글), League(게임화), 푸시(`send-notifications
 
 ## 열린 질문
 
-- `research_gateway`를 어디에 상시 배포할지 (Supabase cron이 도달 가능해야 함).
-- breaking_item 갱신 주기와 TradingAgents 파이프라인 실행 주기(현재는 온디맨드
-  리포트 생성 위주)를 어떻게 맞출지 — 지금 구조는 사용자가 종목을 골라 분석을
-  돌리는 흐름에 가깝고, "계속 흐르는 속보"에 맞는 상시 실행 루프가 별도로
-  필요할 수 있다.
+- ~~`research_gateway`를 어디에 상시 배포할지~~ 해결: GCP e2-micro +
+  Cloudflare Tunnel (`docs/deploy_research_gateway.md`).
+- breaking_item(Toss 랭킹)은 이제 인프로세스 스케줄러로 5분마다 갱신된다.
+  다만 `research_card`(content_snapshot, candidate_gap 기반)는 여전히
+  온디맨드 파일럿 스크립트 실행 위주라 상시 갱신 루프가 없다 — 딥 분석
+  콘텐츠까지 "계속 흐르는" 카덴스로 만들려면 candidate 파이프라인도
+  스케줄러에 잡으로 추가해야 한다 (지금은 범위 밖).
 - breaking_item에 이미지/썸네일이 필요한지, 필요하면 어디서 가져올지.
 - `translation_unlimited_until` 같은 Shop 과금 필드가 번역 레이어 제거 후에도
   의미가 있는지 — 번역이 무료/자동이 되므로 유료 아이템으로서는 폐기 대상에

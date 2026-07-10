@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import html
 import re
-from pathlib import Path
 from typing import Any
 
-from tradingagents.service_api import DEFAULT_ASSET_DIRS, ServiceApiConfig, load_breaking_list, load_ops_status
+from tradingagents.service_api import (
+    ServiceApiConfig,
+    load_breaking_list,
+    load_ops_status,
+)
 from tradingagents.service_assets import find_asset, load_assets, theme_assets
 
 
@@ -210,12 +213,13 @@ def _review_feature(assets: list[dict[str, Any]]) -> str:
         '</a>'
         for asset in reviewed[:5]
     )
+    fallback = '<p class="empty-note">검증 데이터 대기</p>'
     return (
         '<section class="feature-card review-card">'
         '<span>After Check</span>'
         '<h2><a href="/review">사후 점검</a></h2>'
         f'<p>{len(reviewed)}개 콘텐츠의 발행 후 흐름을 추적합니다.</p>'
-        f'<div class="review-mini">{rows or "<p class=\"empty-note\">검증 데이터 대기</p>"}</div>'
+        f'<div class="review-mini">{rows or fallback}</div>'
         '</section>'
     )
 
@@ -359,9 +363,10 @@ def _detail_html(asset: dict[str, Any]) -> str:
             '</article>'
             for stage in composition.get("value_chain") or []
         )
+        stage_fallback = '<p class="empty-note">밸류체인 데이터 대기</p>'
         composition_html = (
             '<section class="detail-panel wide"><h2>테마 밸류체인</h2>'
-            f'<div class="stage-map">{stages or "<p class=\"empty-note\">밸류체인 데이터 대기</p>"}</div>'
+            f'<div class="stage-map">{stages or stage_fallback}</div>'
             '</section>'
         )
     else:
@@ -605,12 +610,71 @@ def load_public_assets(config: ServiceApiConfig) -> list[dict[str, Any]]:
     return load_assets(config.asset_dirs)
 
 
+def _run_rankings_job(config: ServiceApiConfig) -> None:
+    """Collect a Toss rankings snapshot and write it where load_breaking_list
+    (and the scheduler that calls this) expects to find it. Isolated as its
+    own function so the scheduler's try/except boundary catches auth/network
+    failures without ever taking down the FastAPI process."""
+    import json
+    from datetime import datetime
+
+    from tradingagents.dataflows.toss_rankings import collect_toss_rankings_snapshot
+    from tradingagents.dataflows.toss_securities import merged_env
+
+    snapshot = collect_toss_rankings_snapshot(env=merged_env())
+    config.rankings_snapshot_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output = config.rankings_snapshot_dir / f"toss_rankings_{timestamp}.json"
+    output.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def create_app(config: ServiceApiConfig | None = None):
-    from fastapi import FastAPI, HTTPException, Query
+    import secrets
+    from contextlib import asynccontextmanager
+
+    from fastapi import Depends, FastAPI, Header, HTTPException, Query
     from fastapi.responses import HTMLResponse
 
     config = config or ServiceApiConfig()
-    app = FastAPI(title="Research Gateway")
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        from tradingagents.scheduler import ScheduledJob, start_scheduler, stop_scheduler
+
+        tasks: list[Any] = []
+        if config.enable_background_jobs:
+            job = ScheduledJob(
+                name="toss_rankings",
+                interval_seconds=config.rankings_poll_interval_seconds,
+                run=lambda: _run_rankings_job(config),
+            )
+            tasks = start_scheduler([job])
+        try:
+            yield
+        finally:
+            if tasks:
+                await stop_scheduler(tasks)
+
+    app = FastAPI(title="Research Gateway", lifespan=lifespan)
+
+    def require_api_key(authorization: str | None = Header(default=None)) -> None:
+        """Bearer-token gate for /api/* routes. No-op if config.api_key is unset
+        (local/dev default) so existing local workflows and tests keep working
+        without configuring a key. Set config.api_key (RESEARCH_GATEWAY_API_KEY)
+        before exposing this service publicly."""
+        if not config.api_key:
+            return
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="missing bearer token")
+        token = authorization[len("Bearer "):].strip()
+        if not secrets.compare_digest(token, config.api_key):
+            raise HTTPException(status_code=401, detail="invalid bearer token")
+
+    api_auth = [Depends(require_api_key)]
+
+    @app.get("/healthz")
+    def healthz() -> dict[str, Any]:
+        return {"status": "ok"}
 
     @app.get("/", response_class=HTMLResponse)
     def home() -> HTMLResponse:
@@ -660,7 +724,7 @@ def create_app(config: ServiceApiConfig | None = None):
             raise HTTPException(status_code=404, detail="asset not found")
         return HTMLResponse(_detail_html(asset))
 
-    @app.get("/api/assets")
+    @app.get("/api/assets", dependencies=api_auth)
     def assets(kind: str | None = Query(default=None), q: str | None = Query(default=None)) -> dict[str, Any]:
         rows = load_public_assets(config)
         if kind:
@@ -675,19 +739,19 @@ def create_app(config: ServiceApiConfig | None = None):
             ]
         return {"schema_version": 1, "artifact": "service_asset_list", "count": len(rows), "assets": [_asset_summary(asset) for asset in rows]}
 
-    @app.get("/api/assets/{asset_id}")
+    @app.get("/api/assets/{asset_id}", dependencies=api_auth)
     def asset_detail(asset_id: str) -> dict[str, Any]:
         asset = find_asset(load_public_assets(config), asset_id)
         if not asset:
             raise HTTPException(status_code=404, detail="asset not found")
         return {"schema_version": 1, "artifact": "service_asset_detail", "asset": asset}
 
-    @app.get("/api/themes")
+    @app.get("/api/themes", dependencies=api_auth)
     def themes() -> dict[str, Any]:
         rows = theme_assets(load_public_assets(config))
         return {"schema_version": 1, "artifact": "service_theme_list", "count": len(rows), "themes": [_asset_summary(asset) for asset in rows]}
 
-    @app.get("/api/reviews")
+    @app.get("/api/reviews", dependencies=api_auth)
     def reviews() -> dict[str, Any]:
         rows = [
             asset
@@ -707,11 +771,11 @@ def create_app(config: ServiceApiConfig | None = None):
             ],
         }
 
-    @app.get("/api/ops/status")
+    @app.get("/api/ops/status", dependencies=api_auth)
     def ops_status() -> dict[str, Any]:
         return load_ops_status(config)
 
-    @app.get("/api/breaking")
+    @app.get("/api/breaking", dependencies=api_auth)
     def breaking() -> dict[str, Any]:
         return load_breaking_list(config)
 

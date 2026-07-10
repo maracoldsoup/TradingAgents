@@ -9,7 +9,6 @@ from typing import Any
 
 from tradingagents.content_pilot import read_json
 
-
 NOISE_PATTERNS = (
     "executive summary",
     "report date",

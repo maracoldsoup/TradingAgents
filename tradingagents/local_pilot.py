@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from tradingagents.content_pilot import (
     DEFAULT_REPORTS_DIR,
@@ -13,8 +14,8 @@ from tradingagents.content_pilot import (
     load_market_snapshot_index,
     run_content_pilot,
 )
-from tradingagents.content_quality import audit_content_snapshots
 from tradingagents.content_profiles import final_state_from_profile, load_profiles
+from tradingagents.content_quality import audit_content_snapshots
 from tradingagents.content_snapshot import build_content_snapshot
 from tradingagents.cost_guard import assess_low_cost_config, config_from_env, merge_env
 from tradingagents.report_audit import audit_reports

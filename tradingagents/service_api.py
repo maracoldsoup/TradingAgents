@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import json
 import html
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from tradingagents.service_assets import find_asset, load_assets, theme_assets
 
+if TYPE_CHECKING:
+    from fastapi.responses import HTMLResponse
 
 DEFAULT_ASSET_DIRS = (
     Path(".pilot/content_with_market"),
@@ -41,6 +43,15 @@ class ServiceApiConfig:
         Path(".pilot/profile_content/profile_content_pilot_summary.json"),
     )
     rankings_snapshot_dir: Path = Path(".pilot/toss_rankings")
+    api_key: str = ""
+    """Bearer token required on /api/* routes. Empty string disables auth
+    (local/dev default). Set RESEARCH_GATEWAY_API_KEY before exposing this
+    service publicly — see docs/aimyticker_integration_architecture.md."""
+    enable_background_jobs: bool = False
+    """Run the Toss rankings collector in-process on a timer (see
+    tradingagents/scheduler.py) instead of via a separate cron/platform job.
+    Off by default so import/tests never trigger network calls."""
+    rankings_poll_interval_seconds: float = 300
 
 
 def _latest_rankings_snapshot(rankings_snapshot_dir: Path) -> dict[str, Any] | None:
@@ -421,12 +432,13 @@ def _home_theme_feature(themes: list[dict[str, Any]]) -> str:
         '</span>'
         for stage in (composition.get("value_chain") or [])[:5]
     )
+    stages_fallback = '<span class="path-chip"><b>밸류체인 대기</b><i>data pending</i></span>'
     return (
         '<section class="wiki-panel theme-feature">'
         '<div class="panel-kicker">Theme Map</div>'
         f'<h2><a href="{_asset_href(theme)}">{_esc(theme.get("name"))}</a></h2>'
         f'<p>{_esc((theme.get("why_moved") or {}).get("summary") or composition.get("description") or "테마 설명 대기")}</p>'
-        f'<div class="pathway">{stages or "<span class=\"path-chip\"><b>밸류체인 대기</b><i>data pending</i></span>"}</div>'
+        f'<div class="pathway">{stages or stages_fallback}</div>'
         '</section>'
     )
 
@@ -479,7 +491,6 @@ def _home_html(assets: list[dict[str, Any]]) -> str:
     stocks = [asset for asset in assets if asset.get("kind") == "stock"]
     etfs = [asset for asset in assets if asset.get("kind") == "etf"]
     themes = [asset for asset in assets if asset.get("kind") == "theme"]
-    counts = {"stock": len(stocks), "etf": len(etfs), "theme": len(themes)}
     lead = assets[0] if assets else None
     lead_href = _asset_href(lead) if lead else "/search"
     lead_name = _esc(lead.get("name") if lead else "리서치 위키")

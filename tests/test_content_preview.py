@@ -2,16 +2,16 @@ import json
 
 import pytest
 
+from tradingagents.content_preview import (
+    find_content_snapshot_files,
+    load_preview_items,
+    render_content_preview,
+)
 from tradingagents.content_profiles import (
     final_state_from_profile,
     normalize_etf_profile,
     normalize_stock_profile,
     normalize_theme_profile,
-)
-from tradingagents.content_preview import (
-    find_content_snapshot_files,
-    load_preview_items,
-    render_content_preview,
 )
 from tradingagents.content_snapshot import build_content_snapshot
 

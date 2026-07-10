@@ -11,7 +11,6 @@ from tradingagents.dataflows.toss_securities import (
     read_only_get,
 )
 
-
 ReadOnlyGetter = Callable[[str, Mapping[str, Any] | None], dict[str, Any]]
 
 KR_MARKETS = {"KOSPI", "KOSDAQ", "KONEX", "KRX", "NXT"}

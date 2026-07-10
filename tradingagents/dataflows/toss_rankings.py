@@ -23,7 +23,6 @@ from typing import Any
 
 from tradingagents.dataflows.toss_securities import issue_access_token, read_only_get
 
-
 ReadOnlyGetter = Callable[[str, Mapping[str, Any] | None], dict[str, Any]]
 
 MARKET_COUNTRIES = ("KR", "US")

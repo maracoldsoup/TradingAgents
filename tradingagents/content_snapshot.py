@@ -11,7 +11,6 @@ import re
 from datetime import datetime
 from typing import Any
 
-
 _BOILERPLATE = (
     "executive summary",
     "final transaction proposal",
@@ -602,10 +601,7 @@ def _publish_gate(content_type: str, signal: dict[str, Any] | None, visuals: lis
     if signal and not _levels_complete(signal):
         warnings.append("price_ladder_hidden_incomplete_levels")
 
-    if required_missing:
-        status = "blocked"
-    else:
-        status = "ready"
+    status = "blocked" if required_missing else "ready"
 
     return {
         "status": status,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from collections import Counter
 from datetime import datetime
@@ -10,7 +11,6 @@ from typing import Any
 
 from tradingagents.content_snapshot import build_content_snapshot
 from tradingagents.dataflows.toss_market_snapshot import normalize_toss_symbol
-
 
 DEFAULT_REPORTS_DIR = Path.home() / ".tradingagents" / "logs" / "reports"
 
@@ -69,10 +69,8 @@ def generated_at_from_snapshot(snapshot: dict[str, Any]) -> datetime | None:
 
 def _ticker_candidates(ticker: str) -> set[str]:
     candidates = {str(ticker or "").strip().upper()}
-    try:
+    with contextlib.suppress(ValueError):
         candidates.add(normalize_toss_symbol(ticker))
-    except ValueError:
-        pass
     return {candidate for candidate in candidates if candidate}
 
 

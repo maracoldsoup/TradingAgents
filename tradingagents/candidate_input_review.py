@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import json
 from collections import Counter
@@ -67,10 +68,8 @@ def _expand_profile_paths(paths: list[Path]) -> list[Path]:
 
 def _aliases(ticker: str) -> set[str]:
     values = {str(ticker or "").strip().upper()}
-    try:
+    with contextlib.suppress(ValueError):
         values.add(normalize_toss_symbol(ticker))
-    except ValueError:
-        pass
     return {value for value in values if value}
 
 

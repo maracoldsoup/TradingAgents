@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
 DEFAULT_REPORTS_DIR = Path.home() / ".tradingagents" / "logs" / "reports"
 LEVEL_FIELDS = ("entry", "stop", "target", "position_size_pct")
 SECTION_FILES = (

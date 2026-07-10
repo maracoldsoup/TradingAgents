@@ -20,7 +20,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-
 # Priority order when a symbol appears in multiple rankings: the most
 # attention-grabbing membership drives the headline.
 _TYPE_PRIORITY = (

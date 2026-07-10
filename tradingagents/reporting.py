@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from tradingagents.agents.utils.rating import parse_rating
+from tradingagents.content_snapshot import build_content_snapshot
 from tradingagents.graph.signal_processing import normalize_trade_signal
 
 
@@ -158,6 +159,7 @@ def build_analysis_snapshot(
             "complete_report": "complete_report.md",
             "signal": "5_portfolio/signal.json",
             "snapshot": "analysis_snapshot.json",
+            "content_snapshot": "content_snapshot.json",
         },
         "agents": agents,
         "debates": {
@@ -178,6 +180,11 @@ def build_analysis_snapshot(
             "primary_decision_agent": "portfolio_manager",
             "primary_signal": (trade_signal or {}).get("rating"),
             "summary": _preview(final_decision, 520),
+        },
+        "content": {
+            "snapshot_file": "content_snapshot.json",
+            "audience": "beginner",
+            "supports": ["stock", "etf", "theme", "crypto"],
         },
     }
 
@@ -282,6 +289,14 @@ def write_report_tree(final_state: dict, ticker: str, save_path) -> Path:
     (save_path / "analysis_snapshot.json").write_text(
         json.dumps(
             build_analysis_snapshot(final_state, ticker, generated_at),
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (save_path / "content_snapshot.json").write_text(
+        json.dumps(
+            build_content_snapshot(final_state, ticker, generated_at),
             ensure_ascii=False,
             indent=2,
         ),

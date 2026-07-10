@@ -40,6 +40,39 @@ class ServiceApiConfig:
         Path(".pilot/content_with_market/content_pilot_summary.json"),
         Path(".pilot/profile_content/profile_content_pilot_summary.json"),
     )
+    rankings_snapshot_dir: Path = Path(".pilot/toss_rankings")
+
+
+def _latest_rankings_snapshot(rankings_snapshot_dir: Path) -> dict[str, Any] | None:
+    """Return the most recently written toss_rankings_snapshot, if any.
+
+    Filenames from `collect_toss_rankings.py` embed a `%Y%m%d_%H%M%S`
+    timestamp, so lexicographic sort order is also chronological order.
+    """
+    if not rankings_snapshot_dir.exists():
+        return None
+    files = [rankings_snapshot_dir] if rankings_snapshot_dir.is_file() else sorted(rankings_snapshot_dir.glob("*.json"))
+    for file_path in reversed(files):
+        payload = _read_json(file_path)
+        if payload.get("artifact") == "toss_rankings_snapshot":
+            return payload
+    return None
+
+
+def load_breaking_list(config: ServiceApiConfig) -> dict[str, Any]:
+    """Load the current breaking-item list from the latest rankings snapshot."""
+    from tradingagents.breaking_feed import build_breaking_list_payload
+
+    snapshot = _latest_rankings_snapshot(config.rankings_snapshot_dir)
+    if snapshot is None:
+        return {
+            "schema_version": 1,
+            "artifact": "service_breaking_list",
+            "generated_at": None,
+            "count": 0,
+            "items": [],
+        }
+    return build_breaking_list_payload(snapshot)
 
 
 def _asset_summary(asset: dict[str, Any]) -> dict[str, Any]:

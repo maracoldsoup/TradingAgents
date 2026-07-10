@@ -85,6 +85,7 @@ def _config(tmp_path: Path) -> ServiceApiConfig:
         candidate_gap_path=tmp_path / "ops" / "candidate_gap.json",
         candidate_review_path=tmp_path / "ops" / "candidate_input_review.json",
         assessment_path=tmp_path / "ops" / "pilot_assessment.json",
+        rankings_snapshot_dir=tmp_path / "toss_rankings",
     )
 
 
@@ -156,3 +157,69 @@ def test_research_gateway_routes_assets_and_reviews(tmp_path):
     assert reviews["count"] == 3
     assert reviews["reviews"][0]["metrics"]["return_5d_pct"] == -2.3
     assert ".pilot" not in json.dumps(reviews, ensure_ascii=False)
+
+
+@pytest.mark.unit
+def test_research_gateway_api_breaking_with_no_snapshot_yet(tmp_path):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    config = _config(tmp_path)
+    _seed(tmp_path, config)
+    client = TestClient(create_app(config))
+
+    breaking = client.get("/api/breaking").json()
+
+    assert breaking["artifact"] == "service_breaking_list"
+    assert breaking["count"] == 0
+    assert breaking["items"] == []
+
+
+@pytest.mark.unit
+def test_research_gateway_api_breaking_reads_latest_rankings_snapshot(tmp_path):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    config = _config(tmp_path)
+    _seed(tmp_path, config)
+
+    stale = {
+        "schema_version": 1,
+        "artifact": "toss_rankings_snapshot",
+        "generated_at": "2026-07-09T09:30:00",
+        "rankings": {"KR": {"TOP_GAINERS": []}},
+        "ranked_at": {"KR": {"TOP_GAINERS": None}},
+    }
+    fresh = {
+        "schema_version": 1,
+        "artifact": "toss_rankings_snapshot",
+        "generated_at": "2026-07-10T09:30:00",
+        "rankings": {
+            "KR": {
+                "TOP_GAINERS": [
+                    {
+                        "rank": 1,
+                        "symbol": "005930",
+                        "currency": "KRW",
+                        "price": {"changeRate": "0.0125"},
+                        "tradingVolume": "18432100",
+                        "tradingAmount": "1041436650000",
+                    },
+                ],
+            },
+        },
+        "ranked_at": {"KR": {"TOP_GAINERS": "2026-07-10T09:00:00+09:00"}},
+    }
+    _write(config.rankings_snapshot_dir / "toss_rankings_20260709_093000.json", stale)
+    _write(config.rankings_snapshot_dir / "toss_rankings_20260710_093000.json", fresh)
+
+    client = TestClient(create_app(config))
+    breaking = client.get("/api/breaking").json()
+
+    assert breaking["artifact"] == "service_breaking_list"
+    assert breaking["count"] == 1
+    item = breaking["items"][0]
+    assert item["ticker"] == "005930"
+    assert item["market"] == "KR"
+    assert item["notable_mover"] is True
+    assert ".pilot" not in json.dumps(breaking, ensure_ascii=False)

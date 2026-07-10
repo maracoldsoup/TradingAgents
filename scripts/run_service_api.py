@@ -19,6 +19,7 @@ def main() -> None:
     parser.add_argument("--candidate-queue", type=Path, default=Path(".pilot/candidates/candidate_queue.json"))
     parser.add_argument("--candidate-gap", type=Path, default=Path(".pilot/candidates/candidate_gap.json"))
     parser.add_argument("--assessment", type=Path, default=Path(".pilot/assessment/pilot_assessment.json"))
+    parser.add_argument("--rankings-snapshot-dir", type=Path, default=Path(".pilot/toss_rankings"))
     args = parser.parse_args()
 
     config = ServiceApiConfig(
@@ -26,6 +27,7 @@ def main() -> None:
         candidate_queue_path=args.candidate_queue,
         candidate_gap_path=args.candidate_gap,
         assessment_path=args.assessment,
+        rankings_snapshot_dir=args.rankings_snapshot_dir,
     )
     uvicorn.run(create_app(config), host=args.host, port=args.port)
 

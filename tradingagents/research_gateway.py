@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from tradingagents.service_api import DEFAULT_ASSET_DIRS, ServiceApiConfig, load_ops_status
+from tradingagents.service_api import DEFAULT_ASSET_DIRS, ServiceApiConfig, load_breaking_list, load_ops_status
 from tradingagents.service_assets import find_asset, load_assets, theme_assets
 
 
@@ -710,5 +710,9 @@ def create_app(config: ServiceApiConfig | None = None):
     @app.get("/api/ops/status")
     def ops_status() -> dict[str, Any]:
         return load_ops_status(config)
+
+    @app.get("/api/breaking")
+    def breaking() -> dict[str, Any]:
+        return load_breaking_list(config)
 
     return app

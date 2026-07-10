@@ -403,12 +403,28 @@ Auth, Community(게시글/댓글), League(게임화), 푸시(`send-notifications
    더미 데이터 확인.
 2. `research_gateway` 배포 위치 확정: **완료(파일럿 단계는 로컬 맥).**
    실제 API 키(RESEARCH_GATEWAY_API_KEY)와 `cloudflared` 임시 터널 URL을
-   Supabase Edge Function 시크릿에 등록하고 `/api/breaking`에서 실제 Toss
-   랭킹 데이터(200건)까지 확인 완료. GCP VM(`mati-edab4` 프로젝트,
+   Supabase Edge Function 시크릿에 등록. GCP VM(`mati-edab4` 프로젝트,
    `research-gateway` 인스턴스)은 정지 상태로 남겨뒀다 — 상시 운영 필요
-   시점에 재개.
+   시점에 재개. `cloudflared` quick tunnel이 한 번 죽어서 재연결 루프에
+   빠진 걸 발견 — URL이 프로세스 생애주기에 묶여 있어서 재시작할 때마다
+   Supabase 시크릿을 다시 갱신해야 한다는 걸 실전에서 확인했다.
 3. aimyticker에 `sync-research-feed` Edge Function 작성, `research_cards` 테이블
-   마이그레이션 추가.
+   마이그레이션 추가: **완료, 실제로 끝까지 검증함.** 처음엔 아래 세
+   가지가 순서대로 막혔었다.
+   - 마이그레이션 033/034 파일만 커밋했지 실제 DB에 적용 안 함 →
+     `research_cards` 테이블/`external_id` 컬럼이 없어서 `sync-research-feed`가
+     5분마다 조용히 실패하고 있었다.
+   - `sync-research-feed` Edge Function 코드를 커밋만 하고 **배포한 적이
+     없었다** (`supabase functions deploy` 안 함) → 404. `supabase login` +
+     `supabase link` + `supabase functions deploy sync-research-feed`로 해결.
+   - `external_id`에 부분 유니크 인덱스(`where external_id is not null`)를
+     썼더니 PostgREST의 `upsert(..., {onConflict})`가 `ON CONFLICT` 타겟을
+     추론 못 함 → 마이그레이션 035로 일반 유니크 인덱스로 교체.
+   세 가지 다 고친 뒤 수동 트리거로 `breaking: 200건`, `research_cards: 7건`
+   업서트 성공, Feed.tsx에 리서치 카드 7개 실제 렌더링까지 스크린샷으로
+   확인. **"마이그레이션 파일을 썼다"와 "Edge Function을 배포했다"는
+   각각 별도로 확인해야 하는 단계라는 걸 이번에 배웠다** — 둘 다 코드
+   작성만으로는 안 끝난다.
 4. `Feed.tsx`에 `ResearchCard` 컴포넌트와 인터리브 로직 추가 (기존 뉴스 카드
    UI는 유지하되 데이터 소스만 sync 결과로 교체).
 5. 번역 관련 코드 제거: **완료.** `translate-article` 함수,

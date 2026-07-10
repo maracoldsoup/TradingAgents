@@ -358,11 +358,22 @@ Auth, Community(게시글/댓글), League(게임화), 푸시(`send-notifications
 2. `research_gateway.py`에 `/api/breaking` 라우트 추가. 기존
    `/api/assets`, `/api/themes`, `/api/reviews`, `/api/ops/status` 패턴을
    그대로 따라간다 (`schema_version`, `artifact` 필드 포함).
-3. `research_gateway` 배포: **완료.** GCP e2-micro Always Free($0/월 영구)
-   + Cloudflare Tunnel(무료, 포트 개방 없이 HTTPS). Fly.io(~$3-4/월)와
-   Oracle Cloud Always Free(2026-06에 무예고로 한도 절반 축소, 리전 용량
-   부족 사례 흔함)도 검토했으나 비용과 안정성 둘 다에서 GCP+Cloudflare가
-   우위였다. 배포 순서는 `docs/deploy_research_gateway.md` 참고.
+3. `research_gateway` 배포: **완료(파일럿 단계 형태로).** 원래 계획은 GCP
+   e2-micro + Cloudflare Tunnel이었고 실제로 VM까지 만들어서 서비스를
+   띄웠지만, 실제로 해보니 두 가지가 틀어졌다.
+   - GCP는 2024년 정책 변경으로 VM에 붙는 외부 IPv4가 임시든 고정이든
+     시간당 $0.005(월 ~$3.65, ~5,500원)로 과금된다 — "Always Free"는
+     컴퓨트/디스크에만 해당하고 더 이상 완전 무료가 아니다. Fly.io
+     (~$3-4/월)와 사실상 같은 가격대가 됐다.
+   - Toss 증권 API가 IP 허용 목록을 요구해서, 새로 만든 GCP VM의 IP가
+     `access_denied: IP address not allowed`로 막혔다. 등록된 로컬 IP가
+     아니면 Toss 호출 자체가 안 된다.
+   - 결론: 실제 서비스 전 파일럿 단계에서는 **로컬 맥에서
+     `run_service_api.py` + `cloudflared tunnel --url`을 백그라운드로
+     띄우는 방식**으로 임시 운영한다 — 비용 $0, 신규 IP 등록 불필요(이미
+     Toss에 등록된 로컬 IP 사용), 대신 맥이 꺼지면 같이 꺼진다. GCP VM은
+     정지 상태로 보존해 뒀다가 실제 상시 운영이 필요해지는 시점에 다시
+     쓴다. 두 경로 모두 `docs/deploy_research_gateway.md`에 정리돼 있다.
    - `/api/*` 데이터 라우트에 Bearer API 키 인증 추가 (`RESEARCH_GATEWAY_API_KEY`
      미설정 시 인증 비활성 — 로컬 개발 기본값). HTML 라우트는 계속 공개.
    - `/healthz` 라이브니스 라우트 추가.
@@ -390,10 +401,12 @@ Auth, Community(게시글/댓글), League(게임화), 푸시(`send-notifications
 
 1. `research_gateway.py`에 `/api/breaking` 추가하고 로컬에서 `run_service_api.py`로
    더미 데이터 확인.
-2. `research_gateway` 배포 위치 확정: **완료.** `docs/deploy_research_gateway.md`
-   대로 GCP e2-micro + Cloudflare Tunnel에 직접 배포하고 API 키를 Supabase
-   Edge Function 시크릿에 등록하는 것만 남았다 (계정 생성·실제 배포 실행은
-   사람이 해야 하는 단계).
+2. `research_gateway` 배포 위치 확정: **완료(파일럿 단계는 로컬 맥).**
+   실제 API 키(RESEARCH_GATEWAY_API_KEY)와 `cloudflared` 임시 터널 URL을
+   Supabase Edge Function 시크릿에 등록하고 `/api/breaking`에서 실제 Toss
+   랭킹 데이터(200건)까지 확인 완료. GCP VM(`mati-edab4` 프로젝트,
+   `research-gateway` 인스턴스)은 정지 상태로 남겨뒀다 — 상시 운영 필요
+   시점에 재개.
 3. aimyticker에 `sync-research-feed` Edge Function 작성, `research_cards` 테이블
    마이그레이션 추가.
 4. `Feed.tsx`에 `ResearchCard` 컴포넌트와 인터리브 로직 추가 (기존 뉴스 카드

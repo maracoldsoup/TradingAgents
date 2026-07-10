@@ -1,0 +1,7 @@
+Stage,Description,Scope,Ticker,Name,Role,Market,Country,Catalysts,Risks,Metrics
+설계/IP,AI 가속기와 핵심 설계 자산,Global,DEMO-GPU,GPU 설계 데모,설계,NASDAQ,United States,AI 서버 투자 확대;온디바이스 AI 기능 확산,수출 규제,데이터센터 GPU 수요
+설계/IP,AI 가속기와 핵심 설계 자산,Domestic,DEMO-KR-IP,국내 IP 데모,IP,KOSDAQ,Korea,,인력 확보 경쟁,IP 라이선스 매출
+메모리,HBM과 고성능 DRAM,Domestic,DEMO-HBM,국내 HBM 데모,메모리,KOSPI,Korea,HBM 공급 계약,메모리 가격 하락,HBM ASP
+메모리,HBM과 고성능 DRAM,Global,DEMO-MEM,글로벌 메모리 데모,메모리,NASDAQ,United States,,CAPEX 사이클 둔화,DRAM 가격
+장비,전공정과 후공정 장비,Domestic,DEMO-EQP,국내 장비 데모,장비,KOSDAQ,Korea,반도체 장비 수주,수주 공백,장비 수주잔고
+장비,전공정과 후공정 장비,Global,DEMO-TOOL,글로벌 장비 데모,장비,NASDAQ,United States,,중국향 규제,장비 출하량

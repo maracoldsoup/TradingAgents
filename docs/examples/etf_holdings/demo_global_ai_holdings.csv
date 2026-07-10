@@ -1,0 +1,6 @@
+Ticker,Name,Weight (%),Sector,Country
+DEMO-GPU,GPU 설계 데모,21.0,Semiconductors,United States
+DEMO-CLOUD,클라우드 인프라 데모,15.5,Cloud Infrastructure,United States
+DEMO-HBM,HBM 메모리 데모,10.8,Memory,Korea
+DEMO-POWER,데이터센터 전력 데모,7.2,Power Equipment,United States
+DEMO-OTHER,기타 AI 인프라 데모,4.5,Other,Taiwan

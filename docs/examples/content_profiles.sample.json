@@ -1,0 +1,155 @@
+{
+  "note": "Schema-only demo data for no-LLM stock/ETF/theme content pilots. Do not publish these illustrative rows or weights as market data.",
+  "profiles": [
+    {
+      "profile_type": "stock",
+      "ticker": "AAPL",
+      "name": "Apple Inc.",
+      "exchange": "NASDAQ",
+      "country": "United States",
+      "currency": "USD",
+      "sector": "Technology",
+      "industry": "Consumer Electronics",
+      "description": "iPhone, Mac, iPad, wearables, services를 함께 보는 글로벌 소비자 기술 기업입니다.",
+      "as_of": "2026-07-09",
+      "source": "schema_sample_only_not_market_data",
+      "business_lines": [
+        {"name": "Products"},
+        {"name": "Services"}
+      ],
+      "regions": [
+        {"name": "Americas"},
+        {"name": "Europe"},
+        {"name": "Greater China"},
+        {"name": "Japan"},
+        {"name": "Rest of Asia Pacific"}
+      ],
+      "products": [
+        {"name": "iPhone"},
+        {"name": "Mac"},
+        {"name": "iPad"},
+        {"name": "Wearables, Home and Accessories"},
+        {"name": "Services"}
+      ],
+      "peers": [
+        {"ticker": "MSFT", "name": "Microsoft"},
+        {"ticker": "GOOGL", "name": "Alphabet"},
+        {"ticker": "SSNLF", "name": "Samsung Electronics"}
+      ],
+      "catalysts": [
+        {"name": "신제품 교체 사이클"},
+        {"name": "서비스 매출 성장"},
+        {"name": "온디바이스 AI 기능 확산"}
+      ],
+      "risks": [
+        {"name": "중국 수요 둔화"},
+        {"name": "규제와 앱스토어 수수료 압박"},
+        {"name": "하드웨어 교체주기 장기화"}
+      ]
+    },
+    {
+      "profile_type": "etf",
+      "ticker": "DEMO2BAT.KS",
+      "name": "국내 2차전지 밸류체인 ETF 데모",
+      "issuer": "Demo Asset Management",
+      "benchmark": "Demo Battery Value Chain Index",
+      "expense_ratio_pct": 0.45,
+      "aum": "sample only",
+      "currency": "KRW",
+      "as_of": "2026-07-09",
+      "source": "schema_sample_only_not_market_data",
+      "holdings": [
+        {"ticker": "DEMO-CELL", "name": "셀 제조사 데모", "weight_pct": 18.5, "sector": "Battery Cells", "country": "Korea"},
+        {"ticker": "DEMO-MAT", "name": "양극재 데모", "weight_pct": 14.2, "sector": "Materials", "country": "Korea"},
+        {"ticker": "DEMO-EQP", "name": "장비 데모", "weight_pct": 9.7, "sector": "Equipment", "country": "Korea"}
+      ],
+      "sectors": [
+        {"name": "Battery Cells", "weight_pct": 38.0},
+        {"name": "Materials", "weight_pct": 34.0},
+        {"name": "Equipment", "weight_pct": 18.0},
+        {"name": "Other", "weight_pct": 10.0}
+      ],
+      "countries": [
+        {"name": "Korea", "weight_pct": 82.0},
+        {"name": "United States", "weight_pct": 10.0},
+        {"name": "Other", "weight_pct": 8.0}
+      ]
+    },
+    {
+      "profile_type": "etf",
+      "ticker": "DEMOUSAI",
+      "name": "글로벌 AI 인프라 ETF 데모",
+      "issuer": "Demo Global Asset Management",
+      "benchmark": "Demo Global AI Infrastructure Index",
+      "expense_ratio_pct": 0.25,
+      "aum": "sample only",
+      "currency": "USD",
+      "as_of": "2026-07-09",
+      "source": "schema_sample_only_not_market_data",
+      "holdings": [
+        {"ticker": "DEMO-GPU", "name": "GPU 설계 데모", "weight_pct": 21.0, "sector": "Semiconductors", "country": "United States"},
+        {"ticker": "DEMO-CLOUD", "name": "클라우드 인프라 데모", "weight_pct": 15.5, "sector": "Cloud Infrastructure", "country": "United States"},
+        {"ticker": "DEMO-HBM", "name": "HBM 메모리 데모", "weight_pct": 10.8, "sector": "Memory", "country": "Korea"},
+        {"ticker": "DEMO-POWER", "name": "데이터센터 전력 데모", "weight_pct": 7.2, "sector": "Power Equipment", "country": "United States"}
+      ],
+      "sectors": [
+        {"name": "Semiconductors", "weight_pct": 45.0},
+        {"name": "Cloud Infrastructure", "weight_pct": 24.0},
+        {"name": "Power Equipment", "weight_pct": 13.0},
+        {"name": "Other", "weight_pct": 18.0}
+      ],
+      "countries": [
+        {"name": "United States", "weight_pct": 76.0},
+        {"name": "Korea", "weight_pct": 12.0},
+        {"name": "Taiwan", "weight_pct": 8.0},
+        {"name": "Other", "weight_pct": 4.0}
+      ]
+    },
+    {
+      "profile_type": "theme",
+      "ticker": "KR-AI-SEMI",
+      "name": "AI 반도체 테마 데모",
+      "description": "AI 학습과 추론 수요가 늘 때 함께 움직이는 반도체 밸류체인 묶음입니다.",
+      "as_of": "2026-07-09",
+      "source": "schema_sample_only_not_market_data",
+      "value_chain": [
+        {
+          "stage": "설계/IP",
+          "description": "AI 가속기와 핵심 설계 자산",
+          "domestic_names": [{"ticker": "DEMO-KR-IP", "name": "국내 IP 데모"}],
+          "global_names": [{"ticker": "DEMO-GPU", "name": "GPU 설계 데모"}]
+        },
+        {
+          "stage": "메모리",
+          "description": "HBM과 고성능 DRAM",
+          "domestic_names": [{"ticker": "DEMO-HBM", "name": "국내 HBM 데모"}],
+          "global_names": [{"ticker": "DEMO-MEM", "name": "글로벌 메모리 데모"}]
+        },
+        {
+          "stage": "장비",
+          "description": "전공정/후공정 장비",
+          "domestic_names": [{"ticker": "DEMO-EQP", "name": "국내 장비 데모"}],
+          "global_names": [{"ticker": "DEMO-TOOL", "name": "글로벌 장비 데모"}]
+        }
+      ],
+      "domestic_names": [
+        {"ticker": "DEMO-HBM", "name": "국내 HBM 데모", "role": "메모리"},
+        {"ticker": "DEMO-EQP", "name": "국내 장비 데모", "role": "장비"}
+      ],
+      "global_names": [
+        {"ticker": "DEMO-GPU", "name": "GPU 설계 데모", "role": "설계"},
+        {"ticker": "DEMO-TOOL", "name": "글로벌 장비 데모", "role": "장비"}
+      ],
+      "catalysts": [
+        {"name": "AI 서버 투자 확대"},
+        {"name": "HBM 공급 계약"},
+        {"name": "반도체 장비 수주"}
+      ],
+      "risks": [
+        {"name": "수출 규제"},
+        {"name": "메모리 가격 하락"},
+        {"name": "CAPEX 사이클 둔화"}
+      ]
+    }
+  ]
+}

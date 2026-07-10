@@ -152,8 +152,11 @@ def build_breaking_items(
             "summary_ko": _summary_ko(primary),
             "source": "토스증권 랭킹",
             "source_url": None,
-            "published_at": rankings_snapshot.get("ranked_at", {}).get(market, {}).get(primary.get("ranking_type"))
-            or generated_at.isoformat(timespec="seconds"),
+            # Deliberately our own collection time, not Toss's rankedAt: a
+            # 1d-duration ranking's rankedAt barely moves within a day, which
+            # would make a "continuously flowing" breaking feed look frozen
+            # even though we re-poll every 5 minutes.
+            "published_at": generated_at.isoformat(timespec="seconds"),
             "notable_mover": bool(_MOVER_TYPES & set(ranking_types)),
             "rankings": ranking_types,
         })

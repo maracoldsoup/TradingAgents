@@ -65,7 +65,8 @@ def test_build_breaking_items_quotes_toss_ranking_without_recomputing():
     assert "1위" in kr["headline_ko"]
     assert "+1.25%" in kr["summary_ko"]
     assert "거래대금" in kr["summary_ko"]
-    assert kr["published_at"] == "2026-07-10T09:00:00+09:00"
+    # Our own collection time, not Toss's rankedAt (see build_breaking_items).
+    assert kr["published_at"] == "2026-07-10T09:30:00"
     assert kr["id"] == "breaking:KR:005930:2026-07-10"
 
     us = by_ticker["TSLA"]

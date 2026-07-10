@@ -9,7 +9,8 @@ from pathlib import Path
 
 import uvicorn
 
-from tradingagents.research_gateway import DEFAULT_ASSET_DIRS, ServiceApiConfig, create_app
+from tradingagents.research_gateway import create_app
+from tradingagents.service_api import DEFAULT_ASSET_DIRS, ServiceApiConfig
 
 
 def main() -> None:

@@ -121,6 +121,27 @@ def _summary_ko(primary: dict[str, Any]) -> str:
     return " · ".join(parts)
 
 
+def _ranking_meta(primary: dict[str, Any]) -> dict[str, Any]:
+    """Structured counterpart to `_headline_ko`/`_summary_ko`'s Korean strings.
+
+    The frontend needs raw numbers to render a proper delta pill (color,
+    arrow direction) instead of parsing them back out of formatted text —
+    parsing "+1.25%" out of a Korean sentence is exactly the kind of
+    guessing this module's docstring says never to do.
+    """
+    price = primary.get("price") if isinstance(primary.get("price"), dict) else {}
+    change_rate = _number(price.get("changeRate"))
+    ranking_type = str(primary.get("ranking_type") or "")
+    return {
+        "rank": primary.get("rank"),
+        "ranking_type": ranking_type or None,
+        "ranking_label": _TYPE_LABEL_KO.get(ranking_type, ranking_type or None),
+        "change_rate_pct": round(change_rate * 100, 2) if change_rate is not None else None,
+        "trading_amount": _number(primary.get("trading_amount")),
+        "currency": primary.get("currency"),
+    }
+
+
 def _breaking_id(market: str, symbol: str, generated_at: datetime) -> str:
     return f"breaking:{market}:{symbol}:{generated_at.date().isoformat()}"
 
@@ -166,6 +187,7 @@ def build_breaking_items(
             "published_at": generated_at.isoformat(timespec="seconds"),
             "notable_mover": bool(_MOVER_TYPES & set(ranking_types)),
             "rankings": ranking_types,
+            "ranking_meta": _ranking_meta(primary),
         })
 
     items.sort(key=lambda item: (not item["notable_mover"], item["market"], item["ticker"]))

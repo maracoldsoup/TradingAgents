@@ -76,6 +76,25 @@ def test_build_breaking_items_quotes_toss_ranking_without_recomputing():
 
 
 @pytest.mark.unit
+def test_build_breaking_items_carries_structured_ranking_meta():
+    items = build_breaking_items(_rankings_snapshot(), generated_at=datetime(2026, 7, 10, 9, 30))
+    by_ticker = {item["ticker"]: item for item in items}
+
+    kr_meta = by_ticker["005930"]["ranking_meta"]
+    assert kr_meta["rank"] == 1
+    assert kr_meta["ranking_type"] == "TOP_GAINERS"
+    assert kr_meta["ranking_label"] == "급등"
+    assert kr_meta["change_rate_pct"] == 1.25
+    assert kr_meta["trading_amount"] == 1041436650000.0
+    assert kr_meta["currency"] == "KRW"
+
+    us_meta = by_ticker["TSLA"]["ranking_meta"]
+    assert us_meta["rank"] == 3
+    assert us_meta["ranking_label"] == "급락"
+    assert us_meta["change_rate_pct"] == -1.07
+
+
+@pytest.mark.unit
 def test_build_breaking_items_headline_prefers_resolved_stock_name():
     snapshot = _rankings_snapshot(stock_names={
         "KR": {"005930": "삼성전자"},

@@ -419,9 +419,19 @@ Auth, Community(게시글/댓글), League(게임화), 푸시(`send-notifications
    Finnhub 기사를 미번역 상태로 계속 넣고 있어서, 지금은 그 기사들이
    원문 제목만 보이고 번역할 방법이 없다. 6번(컬럼 정리)과 7번
    (collect-news 대체 여부)이 정리될 때까지는 의도된 상태다.
-6. `news_articles` 컬럼 정리 마이그레이션 (`translation_status` 등).
+6. `news_articles` 컬럼 정리 마이그레이션: **부분 완료.**
+   `translate_requested_at`/`translation_error`(마이그레이션 034)는
+   삭제 — `translate-article` 삭제 과정에서 `compute-trending`에도
+   독립된 Gemini 자동 번역 블록이 숨어 있던 걸 발견해서 같이 제거했다
+   (트렌딩 계산 로직 자체는 그대로 둠). `translation_status`/`title_ko`/
+   `summary_ko`/`translated_at`은 `collect-news`가 계속 쓰고 있어서
+   남겨뒀다 — 7번이 정리되기 전까지는 컬럼 자체가 살아있는 게 맞다.
 7. 실사용 데이터로 카덴스/품질 확인 후 `collect-news`/`collect-social`을
-   `breaking_item` 소스로 얼마나 대체할지 결정.
+   `breaking_item` 소스로 얼마나 대체할지 결정: **아직 미결.** 이 결정은
+   문서에 적힌 대로 실사용 데이터가 전제 조건인데 아직 실제 서비스 전
+   단계라 판단 근거가 없다. 지금 상태(Finnhub/Reddit 기사는 원문 언어
+   그대로 노출, 번역 재시도 경로 없음)로 계속 두고, 실사용 데이터가
+   쌓이면 그때 다시 본다.
 8. (1~7 안정화 후) `/api/analyze` 라우트 + `analysis_requests` 테이블 +
    `Shop.tsx`의 `analysis_light`/`analysis_deep` 아이템 + `TickerDetail.tsx`의
    분석 요청 버튼. `depth=light`부터 먼저 붙이고, `depth=deep`(유료 모델 호출)

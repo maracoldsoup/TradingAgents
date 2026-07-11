@@ -43,6 +43,7 @@ class ServiceApiConfig:
         Path(".pilot/profile_content/profile_content_pilot_summary.json"),
     )
     rankings_snapshot_dir: Path = Path(".pilot/toss_rankings")
+    featured_stocks_snapshot_dir: Path = Path(".pilot/featured_stocks")
     api_key: str = ""
     """Bearer token required on /api/* routes. Empty string disables auth
     (local/dev default). Set RESEARCH_GATEWAY_API_KEY before exposing this
@@ -52,6 +53,7 @@ class ServiceApiConfig:
     tradingagents/scheduler.py) instead of via a separate cron/platform job.
     Off by default so import/tests never trigger network calls."""
     rankings_poll_interval_seconds: float = 300
+    featured_stocks_poll_interval_seconds: float = 300
 
 
 def _latest_rankings_snapshot(rankings_snapshot_dir: Path) -> dict[str, Any] | None:
@@ -84,6 +86,41 @@ def load_breaking_list(config: ServiceApiConfig) -> dict[str, Any]:
             "items": [],
         }
     return build_breaking_list_payload(snapshot)
+
+
+def _latest_featured_stocks_snapshot(snapshot_dir: Path) -> dict[str, Any] | None:
+    """Same file-naming/lookup convention as _latest_rankings_snapshot."""
+    if not snapshot_dir.exists():
+        return None
+    files = [snapshot_dir] if snapshot_dir.is_file() else sorted(snapshot_dir.glob("*.json"))
+    for file_path in reversed(files):
+        payload = _read_json(file_path)
+        if payload.get("artifact") == "featured_stocks_snapshot":
+            return payload
+    return None
+
+
+def load_featured_stocks_list(config: ServiceApiConfig) -> dict[str, Any]:
+    """Load the current 특징주 (notable-mover news) list from the latest
+    snapshot. Unlike load_breaking_list, featured_stocks.py already returns
+    items in their final consumable shape, so this just re-wraps the artifact
+    name rather than needing a separate "build" step."""
+    snapshot = _latest_featured_stocks_snapshot(config.featured_stocks_snapshot_dir)
+    if snapshot is None:
+        return {
+            "schema_version": 1,
+            "artifact": "service_featured_stocks_list",
+            "generated_at": None,
+            "count": 0,
+            "items": [],
+        }
+    return {
+        "schema_version": 1,
+        "artifact": "service_featured_stocks_list",
+        "generated_at": snapshot.get("generated_at"),
+        "count": snapshot.get("count", 0),
+        "items": snapshot.get("items", []),
+    }
 
 
 def _asset_summary(asset: dict[str, Any]) -> dict[str, Any]:

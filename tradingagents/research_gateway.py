@@ -9,6 +9,7 @@ from typing import Any
 from tradingagents.service_api import (
     ServiceApiConfig,
     load_breaking_list,
+    load_featured_stocks_list,
     load_ops_status,
 )
 from tradingagents.service_assets import find_asset, load_assets, theme_assets
@@ -628,6 +629,23 @@ def _run_rankings_job(config: ServiceApiConfig) -> None:
     output.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _run_featured_stocks_job(config: ServiceApiConfig) -> None:
+    """Collect a 특징주 snapshot from Naver News. Same isolation rationale as
+    _run_rankings_job — network/vendor failures must never take down the
+    FastAPI process, so this is only ever called through the scheduler's
+    try/except boundary."""
+    import json
+    from datetime import datetime
+
+    from tradingagents.dataflows.featured_stocks import collect_featured_stocks_snapshot
+
+    snapshot = collect_featured_stocks_snapshot()
+    config.featured_stocks_snapshot_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output = config.featured_stocks_snapshot_dir / f"featured_stocks_{timestamp}.json"
+    output.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def create_app(config: ServiceApiConfig | None = None):
     import secrets
     from contextlib import asynccontextmanager
@@ -643,12 +661,19 @@ def create_app(config: ServiceApiConfig | None = None):
 
         tasks: list[Any] = []
         if config.enable_background_jobs:
-            job = ScheduledJob(
-                name="toss_rankings",
-                interval_seconds=config.rankings_poll_interval_seconds,
-                run=lambda: _run_rankings_job(config),
-            )
-            tasks = start_scheduler([job])
+            jobs = [
+                ScheduledJob(
+                    name="toss_rankings",
+                    interval_seconds=config.rankings_poll_interval_seconds,
+                    run=lambda: _run_rankings_job(config),
+                ),
+                ScheduledJob(
+                    name="featured_stocks",
+                    interval_seconds=config.featured_stocks_poll_interval_seconds,
+                    run=lambda: _run_featured_stocks_job(config),
+                ),
+            ]
+            tasks = start_scheduler(jobs)
         try:
             yield
         finally:
@@ -778,5 +803,9 @@ def create_app(config: ServiceApiConfig | None = None):
     @app.get("/api/breaking", dependencies=api_auth)
     def breaking() -> dict[str, Any]:
         return load_breaking_list(config)
+
+    @app.get("/api/featured", dependencies=api_auth)
+    def featured() -> dict[str, Any]:
+        return load_featured_stocks_list(config)
 
     return app

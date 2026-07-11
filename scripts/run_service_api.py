@@ -22,12 +22,14 @@ def main() -> None:
     parser.add_argument("--candidate-gap", type=Path, default=Path(".pilot/candidates/candidate_gap.json"))
     parser.add_argument("--assessment", type=Path, default=Path(".pilot/assessment/pilot_assessment.json"))
     parser.add_argument("--rankings-snapshot-dir", type=Path, default=Path(".pilot/toss_rankings"))
+    parser.add_argument("--featured-stocks-snapshot-dir", type=Path, default=Path(".pilot/featured_stocks"))
     parser.add_argument(
         "--enable-background-jobs",
         action="store_true",
-        help="Run the Toss rankings collector in-process on a timer instead of a separate cron job.",
+        help="Run the Toss rankings + 특징주 collectors in-process on a timer instead of separate cron jobs.",
     )
     parser.add_argument("--rankings-poll-interval", type=float, default=300)
+    parser.add_argument("--featured-stocks-poll-interval", type=float, default=300)
     args = parser.parse_args()
 
     api_key = os.environ.get("RESEARCH_GATEWAY_API_KEY", "")
@@ -40,9 +42,11 @@ def main() -> None:
         candidate_gap_path=args.candidate_gap,
         assessment_path=args.assessment,
         rankings_snapshot_dir=args.rankings_snapshot_dir,
+        featured_stocks_snapshot_dir=args.featured_stocks_snapshot_dir,
         api_key=api_key,
         enable_background_jobs=args.enable_background_jobs,
         rankings_poll_interval_seconds=args.rankings_poll_interval,
+        featured_stocks_poll_interval_seconds=args.featured_stocks_poll_interval,
     )
     uvicorn.run(create_app(config), host=args.host, port=args.port)
 
